@@ -14,6 +14,7 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
   const [draftStep, setDraftStep] = useState(String(step));
   const [draftTarget, setDraftTarget] = useState(String(target));
   const [editingTarget, setEditingTarget] = useState(false);
+  const [targetEditorVisible, setTargetEditorVisible] = useState(false);
   const [targetError, setTargetError] = useState('');
   const progress = Math.min(1, target > 0 ? current / target : 0);
   const reached = current >= target;
@@ -43,7 +44,25 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
     }
     setTargetError('');
     onSaveHydrationTarget(number);
+    closeTargetEditor();
+  }
+
+  function openTargetEditor() {
+    setTargetEditorVisible(true);
+    window.requestAnimationFrame(() => setEditingTarget(true));
+  }
+
+  function closeTargetEditor() {
     setEditingTarget(false);
+    window.setTimeout(() => setTargetEditorVisible(false), 430);
+  }
+
+  function toggleTargetEditor() {
+    if (editingTarget) {
+      closeTargetEditor();
+      return;
+    }
+    openTargetEditor();
   }
 
   return (
@@ -61,7 +80,7 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
           <div className="waterReadout">
             <div className="waterReadoutTop">
               <div className="label">Water</div>
-              <button className="clearSetupButton waterEditButton" type="button" onClick={() => setEditingTarget((currentValue) => !currentValue)}>
+              <button className="clearSetupButton waterEditButton" type="button" onClick={toggleTargetEditor}>
                 {editingTarget ? 'Done' : 'Edit'}
               </button>
             </div>
@@ -70,8 +89,8 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
           </div>
         </div>
 
-        {editingTarget ? (
-          <>
+        {targetEditorVisible ? (
+          <div className={`editPanelFrame ${editingTarget ? 'open' : 'closing'}`}>
             <form onSubmit={saveTarget} className="waterTargetForm">
               <label>
                 Daily target <span className="unitSuffix">ml</span>
@@ -92,7 +111,7 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
               <button className="main secondary" type="submit">Update target</button>
             </form>
             {targetError ? <p className="note warn">{targetError}</p> : null}
-          </>
+          </div>
         ) : null}
 
         {reached ? (

@@ -222,7 +222,7 @@ describe('Reset app integration', () => {
     await user.click(screen.getByRole('button', { name: /edit units/i }));
     await user.click(screen.getByRole('button', { name: /^metric$/i }));
     expect(JSON.parse(localStorage.getItem('reset_state_v7')).settings.preferredUnits).toBe('imperial');
-    expect(screen.getByText('244.9lb')).toBeInTheDocument();
+    await screen.findByText('111.1kg');
     await user.click(screen.getByRole('button', { name: /^done$/i }));
 
     await screen.findByText('111.1kg');

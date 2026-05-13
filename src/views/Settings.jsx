@@ -11,7 +11,7 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
   const [editingUnits, setEditingUnits] = useState(false);
   const [draftUnits, setDraftUnits] = useState(state.settings.preferredUnits);
   const [exitingUnits, setExitingUnits] = useState('');
-  const previousUnitsRef = useRef(state.settings.preferredUnits);
+  const previousDisplayUnitsRef = useRef(state.settings.preferredUnits);
 
   async function copy() {
     if (!exportText) return;
@@ -29,13 +29,15 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
   const start = Number(state.onboardingProfile.startWeightKg || current || 0);
   const units = state.settings.preferredUnits;
 
+  const displayUnits = editingUnits ? draftUnits : units;
+
   useEffect(() => {
-    if (previousUnitsRef.current === units) return undefined;
-    setExitingUnits(previousUnitsRef.current);
-    previousUnitsRef.current = units;
+    if (previousDisplayUnitsRef.current === displayUnits) return undefined;
+    setExitingUnits(previousDisplayUnitsRef.current);
+    previousDisplayUnitsRef.current = displayUnits;
     const timer = window.setTimeout(() => setExitingUnits(''), 460);
     return () => window.clearTimeout(timer);
-  }, [units]);
+  }, [displayUnits]);
 
   useEffect(() => {
     if (!editingUnits) setDraftUnits(units);
@@ -70,14 +72,14 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
             <button type="button" className={draftUnits === 'imperial' ? 'on' : ''} onClick={() => setDraftUnits('imperial')}>Imperial</button>
           </div>
         ) : null}
-        <div className="profileUnitStage" data-direction={units === 'imperial' ? 'right' : 'left'}>
+        <div className="profileUnitStage" data-direction={displayUnits === 'imperial' ? 'right' : 'left'}>
           {exitingUnits ? (
             <div className="profileUnitSnapshot exiting" aria-hidden="true">
               {profileUnitContent(exitingUnits)}
             </div>
           ) : null}
-          <div className="profileUnitSnapshot entering" key={units}>
-            {profileUnitContent(units)}
+          <div className="profileUnitSnapshot entering" key={displayUnits}>
+            {profileUnitContent(displayUnits)}
           </div>
         </div>
       </Card>

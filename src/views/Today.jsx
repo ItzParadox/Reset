@@ -7,6 +7,7 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
   const walkMins = state.settings.walkMinutes;
   const [timerMinutes, setTimerMinutes] = useState(walkMins || '');
   const [editingTimer, setEditingTimer] = useState(!walkMins);
+  const [timerEditorVisible, setTimerEditorVisible] = useState(!walkMins);
   const [timerError, setTimerError] = useState('');
   const hydration = state.settings.hydrationTarget;
   const waterMl = Number(dailyLog.waterMl || 0);
@@ -32,7 +33,25 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
     }
     setTimerError('');
     onSaveTimerDuration(Number(timerMinutes));
+    closeTimerEditor();
+  }
+
+  function openTimerEditor() {
+    setTimerEditorVisible(true);
+    window.requestAnimationFrame(() => setEditingTimer(true));
+  }
+
+  function closeTimerEditor() {
     setEditingTimer(false);
+    window.setTimeout(() => setTimerEditorVisible(false), 430);
+  }
+
+  function toggleTimerEditor() {
+    if (editingTimer) {
+      closeTimerEditor();
+      return;
+    }
+    openTimerEditor();
   }
 
   return (
@@ -63,7 +82,7 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
         <div className="cardTitleRow compactTitleRow">
           <div className="label">Movement timer</div>
           {hasTimerGoal ? (
-            <button className="clearSetupButton" type="button" onClick={() => setEditingTimer((current) => !current)}>
+            <button className="clearSetupButton" type="button" onClick={toggleTimerEditor}>
               {editingTimer ? 'Done' : 'Edit'}
             </button>
           ) : null}
@@ -101,8 +120,8 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
             <p className="note">Set one to start using the timer.</p>
           </>
         )}
-        {editingTimer || !hasTimerGoal ? (
-          <>
+        {(timerEditorVisible || !hasTimerGoal) ? (
+          <div className={`editPanelFrame ${editingTimer || !hasTimerGoal ? 'open' : 'closing'}`}>
             <form onSubmit={saveTimer} className="timerSetForm">
               <label>
                 Daily movement goal <span className="unitSuffix">min</span>
@@ -122,7 +141,7 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
               <button className="main secondary" type="submit">{hasTimerGoal ? 'Update goal' : 'Set timer'}</button>
             </form>
             {timerError ? <p className="note warn">{timerError}</p> : null}
-          </>
+          </div>
         ) : null}
       </Card>
 
