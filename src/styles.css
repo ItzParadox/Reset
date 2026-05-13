@@ -122,6 +122,8 @@ button.main:active, .choice:active { opacity: .72; }
 .timerBtn.timerPause { background: rgba(255,90,90,.08); border-color: rgba(255,90,90,.3); color: #ff7878; }
 .timerBtn:active { transform: scale(.97); opacity: .8; }
 .timerBtn.timerReset:active { transform: scale(.96); opacity: .65; }
+.timerSetForm { margin-top: 12px; display: grid; gap: 8px; }
+.timerSetForm .main { margin-top: 0; }
 
 /* ─── History ────────────────────────────────────────────────── */
 .waterCard { overflow: hidden; }

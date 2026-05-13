@@ -2,6 +2,7 @@ import Card from '../components/Card.jsx';
 import MetricCard from '../components/MetricCard.jsx';
 import { currentWeight } from '../lib/storage.js';
 import { bmiClassName, bmiVisualStyle, estimatePlanGoalDate, estimateTargetDate, weeklyChange } from '../lib/calculations.js';
+import { formatWeight, formatWeightDelta, weightUnit } from '../lib/units.js';
 
 function greeting(name) {
   const hour = new Date().getHours();
@@ -11,11 +12,12 @@ function greeting(name) {
   return `Evening${suffix}.`;
 }
 
-function lostCopy(lost) {
+function lostCopy(lost, units) {
   if (lost <= 0) return 'Every consistent day counts.';
-  if (lost < 2) return `${lost.toFixed(1)}kg down. You've started.`;
-  if (lost < 10) return `${lost.toFixed(1)}kg down. Keep going.`;
-  return `${lost.toFixed(1)}kg down. That's real.`;
+  const displayLost = formatWeightDelta(-lost, units).replace('-', '');
+  if (lost < 2) return `${displayLost} down. You've started.`;
+  if (lost < 10) return `${displayLost} down. Keep going.`;
+  return `${displayLost} down. That's real.`;
 }
 
 export default function Home({ state, todayDailyLog, onChangeTab }) {
@@ -32,6 +34,7 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
   const name = state.profile.displayName || '';
   const bmiClass = bmiClassName(state.healthPlan.bmiCategory);
   const bmiStyle = bmiVisualStyle(state.healthPlan.bmi);
+  const units = state.settings.preferredUnits;
 
   const todayNote = doneCount === 4 ? 'all done today' : doneCount === 0 ? 'not started yet' : 'in progress';
 
@@ -39,8 +42,8 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
     <div className="staggerStack">
       <Card className="heroCard">
         <div className="heroGreeting">{greeting(name)}</div>
-        <div className="big weightHeroNumber">{current ? `${current.toFixed(1)}kg` : 'not set'}</div>
-        <p className="note">{lostCopy(lost)} Goal: {target ? `${target}kg` : 'not set yet'}.</p>
+        <div className="big weightHeroNumber">{formatWeight(current, units, 'not set')}</div>
+        <p className="note">{lostCopy(lost, units)} Goal: {formatWeight(target, units, 'not set yet')}.</p>
         <div className="track"><div className="fill" style={{ width: `${pct}%` }} /></div>
       </Card>
 
@@ -61,8 +64,8 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
       <div className="grid">
         <MetricCard
           label="This week"
-          value={weekly === null ? 'not yet' : `${weekly > 0 ? '+' : ''}${weekly}kg`}
-          note={weekly === null ? 'need 2 weeks of logs' : '7-day trend'}
+          value={weekly === null ? 'not yet' : formatWeightDelta(weekly, units)}
+          note={weekly === null ? 'need 2 weeks of logs' : `7-day trend (${weightUnit(units)})`}
         />
         <MetricCard
           label="Goal date"

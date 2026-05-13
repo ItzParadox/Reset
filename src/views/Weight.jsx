@@ -4,7 +4,15 @@ import MetricCard from '../components/MetricCard.jsx';
 import { currentWeight } from '../lib/storage.js';
 import { estimateTargetDate, weeklyChange } from '../lib/calculations.js';
 import TopToast from '../components/TopToast.jsx';
-import { INPUT_LIMITS, validateWeightKg } from '../lib/validation.js';
+import {
+  formatWeight,
+  formatWeightDelta,
+  validateWeightInput,
+  weightInputLimits,
+  weightInputPlaceholder,
+  weightInputToKg,
+  weightUnit,
+} from '../lib/units.js';
 
 function formatTime(iso) {
   const date = new Date(iso);
@@ -12,15 +20,17 @@ function formatTime(iso) {
   return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
 
-function changeCopy(change) {
-  if (change < -0.05) return `${change.toFixed(1)}kg lost`;
-  if (change > 0.05) return `+${change.toFixed(1)}kg gained`;
+function changeCopy(change, units) {
+  if (change < -0.05) return `${formatWeightDelta(change, units).replace('-', '')} lost`;
+  if (change > 0.05) return `${formatWeightDelta(change, units)} gained`;
   return 'Same as start';
 }
 
 export default function Weight({ state, logs, onSaveWeight }) {
   const [weight, setWeight] = useState('');
   const [error, setError] = useState('');
+  const units = state.settings.preferredUnits;
+  const limits = weightInputLimits(units);
   const current = currentWeight(state);
   const start = Number(state.onboardingProfile.startWeightKg || current);
   const target = Number(state.onboardingProfile.goalWeightKg || 0);
@@ -32,13 +42,12 @@ export default function Weight({ state, logs, onSaveWeight }) {
 
   function submit(event) {
     event.preventDefault();
-    const number = Number(weight);
-    const problem = validateWeightKg(number);
+    const problem = validateWeightInput(weight, units);
     if (problem) {
       setError(problem);
       return;
     }
-    onSaveWeight(number);
+    onSaveWeight(weightInputToKg(weight, units));
     setWeight('');
     setError('');
   }
@@ -47,27 +56,27 @@ export default function Weight({ state, logs, onSaveWeight }) {
     <>
       <TopToast message={error} />
       <div className="grid">
-        <MetricCard className={changeClass} label="Total so far" value={changeCopy(change)} note={`started at ${start ? `${start.toFixed(1)}kg` : 'unknown'}`} />
+        <MetricCard className={changeClass} label="Total so far" value={changeCopy(change, units)} note={`started at ${formatWeight(start, units, 'unknown')}`} />
         <MetricCard
           label="Goal"
-          value={target ? `${target.toFixed(1)}kg` : 'not set'}
-          note={toGoal === null ? 'set during setup' : toGoal > 0 ? `${toGoal.toFixed(1)}kg to go` : 'goal reached'}
+          value={formatWeight(target, units, 'not set')}
+          note={toGoal === null ? 'set during setup' : toGoal > 0 ? `${formatWeightDelta(toGoal, units).replace('+', '')} to go` : 'goal reached'}
         />
       </div>
 
       <div className="grid">
-        <MetricCard label="Right now" value={current ? `${current.toFixed(1)}kg` : 'not logged'} note="most recent log" />
+        <MetricCard label="Right now" value={formatWeight(current, units, 'not logged')} note="most recent log" />
         <MetricCard
           label="This week"
-          value={weekly === null ? 'not yet' : `${weekly > 0 ? '+' : ''}${weekly}kg`}
-          note={weekly === null ? 'need 2 weeks of logs' : weekly < 0 ? 'heading down' : weekly > 0 ? 'heading up' : 'holding steady'}
+          value={weekly === null ? 'not yet' : formatWeightDelta(weekly, units)}
+          note={weekly === null ? 'need 2 weeks of logs' : weekly < 0 ? `heading down (${weightUnit(units)})` : weekly > 0 ? `heading up (${weightUnit(units)})` : 'holding steady'}
         />
       </div>
 
       <Card>
         <div className="label">Log today's weight</div>
         <form onSubmit={submit}>
-          <input value={weight} onChange={(e) => setWeight(e.target.value)} type="number" step="0.1" min={INPUT_LIMITS.weightKg.min} max={INPUT_LIMITS.weightKg.max} inputMode="decimal" placeholder="e.g. 138.5" />
+          <input value={weight} onChange={(e) => setWeight(e.target.value)} type="number" step="0.1" min={limits.min} max={limits.max} inputMode="decimal" placeholder={weightInputPlaceholder(units)} aria-label={`Weight in ${limits.unit}`} />
           <button className="main" type="submit">Save</button>
         </form>
         <p className="note">
@@ -84,8 +93,8 @@ export default function Weight({ state, logs, onSaveWeight }) {
         <div className="history">
           {logs.length ? logs.map((log) => (
             <div className="historyRow" key={log.id}>
-              <span>{log.displayDate}{formatTime(log.createdAt) ? ` · ${formatTime(log.createdAt)}` : ''}</span>
-              <span>{Number(log.weightKg).toFixed(1)}kg</span>
+              <span>{log.displayDate}{formatTime(log.createdAt) ? ` - ${formatTime(log.createdAt)}` : ''}</span>
+              <span>{formatWeight(log.weightKg, units)}</span>
             </div>
           )) : <p className="note">Nothing logged yet. Your first entry will show up here.</p>}
         </div>

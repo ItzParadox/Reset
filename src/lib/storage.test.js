@@ -115,6 +115,15 @@ describe('state normalization and persistence', () => {
     expect(state.sync.pending).toHaveLength(1);
   });
 
+  it('hydrates timer duration from existing walk-minute settings during migration', () => {
+    const state = normaliseState({
+      settings: { walkMinutes: 20 },
+      ui: { timer: { durationSeconds: 0, remainingSeconds: 0 } },
+    });
+
+    expect(state.ui.timer).toEqual({ durationSeconds: 1200, remainingSeconds: 1200 });
+  });
+
   it('saves, loads, migrates, queues, clears, and reads current weight', () => {
     vi.setSystemTime(new Date(2026, 4, 13, 10));
     const state = normaliseState({

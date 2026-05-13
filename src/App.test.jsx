@@ -62,6 +62,18 @@ const exportedBugState = {
   sync: { mode: 'local-only', pending: [], lastSyncedAt: null },
 };
 
+function stateWithPatch(patch = {}) {
+  return {
+    ...exportedBugState,
+    ...patch,
+    profile: { ...exportedBugState.profile, ...(patch.profile || {}) },
+    onboardingProfile: { ...exportedBugState.onboardingProfile, ...(patch.onboardingProfile || {}) },
+    healthPlan: { ...exportedBugState.healthPlan, ...(patch.healthPlan || {}) },
+    settings: { ...exportedBugState.settings, ...(patch.settings || {}) },
+    ui: { ...exportedBugState.ui, ...(patch.ui || {}), timer: { ...exportedBugState.ui.timer, ...(patch.ui?.timer || {}) } },
+  };
+}
+
 function expectNoAbsurdCalorieText() {
   const text = document.body.textContent || '';
   expect(text).not.toMatch(/NaN|Infinity/);
@@ -120,7 +132,7 @@ describe('Reset app integration', () => {
     })]);
 
     await user.click(screen.getByRole('button', { name: /weight/i }));
-    await user.type(screen.getByPlaceholderText(/138\.5/i), '98.5');
+    await user.type(screen.getByPlaceholderText(/95 kg/i), '98.5');
     await user.click(within(screen.getByText(/log today's weight/i).closest('.card')).getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(screen.getAllByText('98.5kg')).toHaveLength(2));
@@ -128,6 +140,92 @@ describe('Reset app integration', () => {
     expect(updated.onboardingProfile.currentWeightKg).toBe(98.5);
     expect(updated.weightLogs[0].weightKg).toBe(98.5);
     expect(updated.sync.pending[0].mutation.table).toBe('weight_logs');
+  });
+
+  it('keeps Aggressive selected and recalculates calories after metric weight changes', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
+      settings: { preferredUnits: 'metric', calorieTarget: 1781 },
+      healthPlan: {
+        bmrCalories: 1979,
+        maintenanceCalories: 2375,
+        selectedDeficitLevel: 'aggressive',
+        deficitPercentage: 0.25,
+        calorieTarget: 1781,
+      },
+      ui: { activeTab: 'weight' },
+    })));
+
+    render(<App />);
+    expect(await screen.findAllByText('111.1kg', {}, { timeout: 2500 })).toHaveLength(2);
+    await user.type(screen.getByPlaceholderText(/95 kg/i), '95');
+    await user.click(within(screen.getByText(/log today's weight/i).closest('.card')).getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(screen.getAllByText('95.0kg')).toHaveLength(2));
+    const stored = JSON.parse(localStorage.getItem('reset_state_v7'));
+    expect(stored.healthPlan.selectedDeficitLevel).toBe('aggressive');
+    expect(stored.healthPlan.maintenanceCalories).toBe(2182);
+    expect(stored.settings.calorieTarget).toBe(1637);
+  });
+
+  it('uses imperial display and stores logged lb values internally as kg after refresh', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
+      settings: { preferredUnits: 'imperial', calorieTarget: 1781 },
+      healthPlan: {
+        bmrCalories: 1979,
+        maintenanceCalories: 2375,
+        selectedDeficitLevel: 'aggressive',
+        deficitPercentage: 0.25,
+        calorieTarget: 1781,
+      },
+      ui: { activeTab: 'weight' },
+    })));
+
+    const { unmount } = render(<App />);
+    expect(await screen.findAllByText('244.9lb', {}, { timeout: 2500 })).toHaveLength(2);
+    expect(screen.getByText('177.9lb')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/210 lb/i)).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText(/210 lb/i), '210');
+    await user.click(within(screen.getByText(/log today's weight/i).closest('.card')).getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(screen.getAllByText('210.1lb')).toHaveLength(2));
+    const stored = JSON.parse(localStorage.getItem('reset_state_v7'));
+    expect(stored.weightLogs[0].weightKg).toBe(95.3);
+    expect(stored.onboardingProfile.currentWeightKg).toBe(95.3);
+
+    unmount();
+    render(<App />);
+    await screen.findAllByText('210.1lb', {}, { timeout: 2500 });
+    expect(screen.queryByText(/95\.3kg/)).not.toBeInTheDocument();
+  });
+
+  it('shows a movement timer empty state and starts after setting a duration', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
+      settings: { preferredUnits: 'metric', calorieTarget: 2019, walkMinutes: null },
+      healthPlan: {
+        bmrCalories: 1979,
+        maintenanceCalories: 2375,
+        selectedDeficitLevel: 'moderate',
+        deficitPercentage: 0.15,
+        calorieTarget: 2019,
+      },
+      ui: { activeTab: 'today', timer: { durationSeconds: 0, remainingSeconds: 0 } },
+    })));
+
+    render(<App />);
+    await screen.findByText('No movement goal set', {}, { timeout: 2500 });
+    expect(screen.queryByRole('button', { name: /^start$/i })).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/timer duration/i), '20');
+    await user.click(screen.getByRole('button', { name: /set timer/i }));
+
+    await screen.findByText('20:00');
+    expect(JSON.parse(localStorage.getItem('reset_state_v7')).ui.timer.durationSeconds).toBe(1200);
+    await user.click(screen.getByRole('button', { name: /^start$/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /^start$/i })).toHaveClass('timerStart'));
   });
 
   it('returns to the original Moderate calories after switching plans from onboarding data', async () => {

@@ -147,6 +147,10 @@ export function normaliseState(input = {}) {
     : 'home';
   merged.ui.timer.durationSeconds = boundedInt(merged.ui.timer.durationSeconds, 60, 36000, base.ui.timer.durationSeconds);
   merged.ui.timer.remainingSeconds = boundedInt(merged.ui.timer.remainingSeconds, 0, 36000, base.ui.timer.remainingSeconds);
+  if (!merged.ui.timer.durationSeconds && Number(merged.settings.walkMinutes) > 0) {
+    merged.ui.timer.durationSeconds = Number(merged.settings.walkMinutes) * 60;
+    merged.ui.timer.remainingSeconds = merged.ui.timer.durationSeconds;
+  }
 
   return merged;
 }

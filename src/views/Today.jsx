@@ -1,8 +1,12 @@
+import { useEffect, useState } from 'react';
 import Card from '../components/Card.jsx';
 import Tick from '../components/Tick.jsx';
+import { INPUT_LIMITS, validInteger } from '../lib/validation.js';
 
-export default function Today({ state, dailyLog, timerText, timerRunning, onToggleDaily, onSaveDailyNotes, onTimerStart, onTimerPause, onTimerReset }) {
+export default function Today({ state, dailyLog, timerText, timerRunning, onToggleDaily, onSaveDailyNotes, onTimerStart, onTimerPause, onTimerReset, onSaveTimerDuration }) {
   const walkMins = state.settings.walkMinutes;
+  const [timerMinutes, setTimerMinutes] = useState(walkMins || '');
+  const [timerError, setTimerError] = useState('');
   const hydration = state.settings.hydrationTarget;
   const waterMl = Number(dailyLog.waterMl || 0);
   const hydrationLabel = hydration
@@ -10,9 +14,24 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
     : 'stay hydrated';
 
   const { remainingSeconds, durationSeconds } = state.ui.timer;
+  const hasTimerGoal = Number(durationSeconds) > 0;
   const isIdle = remainingSeconds === durationSeconds;
   const isFinished = remainingSeconds === 0;
   const isPaused = !timerRunning && !isIdle && !isFinished;
+
+  useEffect(() => {
+    setTimerMinutes(walkMins || '');
+  }, [walkMins]);
+
+  function saveTimer(event) {
+    event.preventDefault();
+    if (!validInteger(timerMinutes, INPUT_LIMITS.walkMinutes.min, INPUT_LIMITS.walkMinutes.max)) {
+      setTimerError('Use whole minutes between 1 and 300.');
+      return;
+    }
+    setTimerError('');
+    onSaveTimerDuration(Number(timerMinutes));
+  }
 
   return (
     <>
@@ -20,7 +39,7 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
         <div className="label">Today's basics</div>
         <div className="rows">
           <div className="row">
-            <span className="rowText">Moved today{walkMins ? ` · ${walkMins} min` : ''}</span>
+            <span className="rowText">Moved today{walkMins ? ` - ${walkMins} min` : ''}</span>
             <Tick checked={dailyLog.movementDone} label="Toggle movement done" onToggle={() => onToggleDaily('movementDone')} />
           </div>
           <div className="row">
@@ -32,7 +51,7 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
             <Tick checked={dailyLog.proteinDone} label="Toggle protein target done" onToggle={() => onToggleDaily('proteinDone')} />
           </div>
           <div className="row">
-            <span className="rowText">Drank enough water · {hydrationLabel}</span>
+            <span className="rowText">Drank enough water - {hydrationLabel}</span>
             <Tick checked={dailyLog.hydrationDone} label="Toggle hydration done" onToggle={() => onToggleDaily('hydrationDone')} />
           </div>
         </div>
@@ -40,30 +59,58 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
 
       <Card>
         <div className="label">Movement timer</div>
-        <div className="big">{timerText}</div>
-        <div className="timer-btns">
-          <button
-            type="button"
-            className={`timerBtn${timerRunning ? ' timerStart' : ''}`}
-            onClick={onTimerStart}
-          >
-            Start
-          </button>
-          <button
-            type="button"
-            className={`timerBtn${isPaused ? ' timerPause' : ''}`}
-            onClick={onTimerPause}
-          >
-            Pause
-          </button>
-          <button
-            type="button"
-            className="timerBtn timerReset"
-            onClick={onTimerReset}
-          >
-            Reset
-          </button>
-        </div>
+        {hasTimerGoal ? (
+          <>
+            <div className="big">{timerText}</div>
+            <div className="timer-btns">
+              <button
+                type="button"
+                className={`timerBtn${timerRunning ? ' timerStart' : ''}`}
+                onClick={onTimerStart}
+              >
+                Start
+              </button>
+              <button
+                type="button"
+                className={`timerBtn${isPaused ? ' timerPause' : ''}`}
+                onClick={onTimerPause}
+              >
+                Pause
+              </button>
+              <button
+                type="button"
+                className="timerBtn timerReset"
+                onClick={onTimerReset}
+              >
+                Reset
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mid">No movement goal set</div>
+            <p className="note">Set one to start using the timer.</p>
+          </>
+        )}
+        <form onSubmit={saveTimer} className="timerSetForm">
+          <label>
+            Timer duration <span className="unitSuffix">min</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={INPUT_LIMITS.walkMinutes.min}
+              max={INPUT_LIMITS.walkMinutes.max}
+              value={timerMinutes}
+              onChange={(event) => {
+                setTimerError('');
+                setTimerMinutes(event.target.value);
+              }}
+              placeholder="e.g. 20"
+            />
+          </label>
+          <button className="main secondary" type="submit">{hasTimerGoal ? 'Update timer' : 'Set timer'}</button>
+        </form>
+        {timerError ? <p className="note warn">{timerError}</p> : null}
       </Card>
 
       <Card>
@@ -71,7 +118,7 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
         <textarea
           value={dailyLog.notes}
           onChange={(e) => onSaveDailyNotes(e.target.value)}
-          placeholder="Hunger, sleep, energy, what made it easier or harder — anything worth remembering tomorrow."
+          placeholder="Hunger, sleep, energy, what made it easier or harder - anything worth remembering tomorrow."
         />
       </Card>
     </>

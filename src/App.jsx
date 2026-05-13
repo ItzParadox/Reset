@@ -185,15 +185,8 @@ function AppContent() {
     commit((draft) => {
       draft.weightLogs = [log, ...draft.weightLogs].slice(0, 300);
       draft.onboardingProfile.currentWeightKg = log.weightKg;
-      // Recalculate BMI, but keep the calorie plan baseline the user agreed to.
-      const previousCalorieTarget = draft.settings.calorieTarget;
-      const previousBmr = draft.healthPlan.bmrCalories;
-      const previousMaintenance = draft.healthPlan.maintenanceCalories;
       draft.healthPlan = calculatePlan(draft.onboardingProfile, draft.healthPlan.selectedDeficitLevel, draft.healthPlan.warningAcknowledged);
-      draft.healthPlan.bmrCalories = previousBmr;
-      draft.healthPlan.maintenanceCalories = previousMaintenance;
-      draft.settings.calorieTarget = previousCalorieTarget;
-      draft.healthPlan.calorieTarget = previousCalorieTarget;
+      draft.settings.calorieTarget = draft.healthPlan.calorieTarget;
       return draft;
     }, { table: 'weight_logs', action: 'upsert', payload: log });
 
@@ -206,8 +199,9 @@ function AppContent() {
     const updatedAt = new Date().toISOString();
     commit((draft) => {
       draft.settings = { ...draft.settings, ...nextSettings, updatedAt };
-      if (Object.prototype.hasOwnProperty.call(nextSettings, 'walkMinutes') && Number(nextSettings.walkMinutes) > 0) {
-        draft.ui.timer.durationSeconds = Number(nextSettings.walkMinutes) * 60;
+      if (Object.prototype.hasOwnProperty.call(nextSettings, 'walkMinutes')) {
+        const minutes = Number(nextSettings.walkMinutes);
+        draft.ui.timer.durationSeconds = Number.isFinite(minutes) && minutes > 0 ? minutes * 60 : 0;
         draft.ui.timer.remainingSeconds = draft.ui.timer.durationSeconds;
       }
       return draft;
@@ -286,6 +280,7 @@ function AppContent() {
 
   function startTimer() {
     if (intervalRef.current) return;
+    if (state.ui.timer.durationSeconds <= 0 || state.ui.timer.remainingSeconds <= 0) return;
     setTimerRunning(true);
     intervalRef.current = window.setInterval(() => {
       setState((previous) => {
@@ -387,6 +382,7 @@ function AppContent() {
         onTimerStart={startTimer}
         onTimerPause={pauseTimer}
         onTimerReset={resetTimer}
+        onSaveTimerDuration={(minutes) => saveSettings({ walkMinutes: minutes })}
       />
     ),
     water: <Water state={state} dailyLog={todayDailyLog} onAddWater={addWater} onResetWater={resetWater} onSaveWaterStep={saveWaterStep} />,

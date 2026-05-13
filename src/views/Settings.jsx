@@ -3,6 +3,7 @@ import Card from '../components/Card.jsx';
 import MetricCard from '../components/MetricCard.jsx';
 import { MEDICATION_OPTIONS, bmiClassName, bmiVisualStyle } from '../lib/calculations.js';
 import { currentWeight } from '../lib/storage.js';
+import { formatHeight, formatWeight } from '../lib/units.js';
 
 export default function Settings({ state, onSaveSettings, onExportData, onCopyExport, onResetLocalData }) {
   const [walkMinutes, setWalkMinutes] = useState(state.settings.walkMinutes ?? '');
@@ -32,6 +33,7 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
   const bmiStyle = bmiVisualStyle(state.healthPlan.bmi);
   const current = currentWeight(state);
   const start = Number(state.onboardingProfile.startWeightKg || current || 0);
+  const units = state.settings.preferredUnits;
 
   return (
     <div className="staggerStack">
@@ -45,16 +47,16 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
         </div>
         <div className="currentWeightBlock">
           <div className="label">Current weight</div>
-          <strong className="profileWeightNumber">{current ? `${current.toFixed(1)}kg` : 'not logged'}</strong>
-          <p>Started at {start ? `${start.toFixed(1)}kg` : '-'}</p>
+          <strong className="profileWeightNumber">{formatWeight(current, units, 'not logged')}</strong>
+          <p>Started at {formatWeight(start, units, '-')}</p>
         </div>
         <div className="profileMetrics">
-          <MetricCard label="Goal" value={state.onboardingProfile.goalWeightKg ? `${state.onboardingProfile.goalWeightKg}kg` : 'not set'} note="target weight" />
+          <MetricCard label="Goal" value={formatWeight(state.onboardingProfile.goalWeightKg, units, 'not set')} note="target weight" />
           <MetricCard className="bmiMetricCard" label="BMI" value={state.healthPlan.bmi || 'pending'} note="current estimate" />
           <MetricCard label="Calories" value={state.settings.calorieTarget || 'not set'} note="daily target" />
           <MetricCard label="Maintenance" value={state.healthPlan.maintenanceCalories || 'calculating'} note="estimated kcal/day" />
         </div>
-        <p className="note">{state.onboardingProfile.heightCm}cm {' | '} {state.onboardingProfile.activityLevel} activity {' | '} {med || 'no medication'}</p>
+        <p className="note">{formatHeight(state.onboardingProfile.heightCm, units)} {' | '} {state.onboardingProfile.activityLevel} activity {' | '} {med || 'no medication'}</p>
       </Card>
 
       <Card>
