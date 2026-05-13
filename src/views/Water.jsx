@@ -50,23 +50,23 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
     <div className="staggerStack">
       <Card className={`waterCard ${reached ? 'complete' : ''}`}>
         <div className="waterHeader">
-          <div>
-            <div className="label">Water</div>
-            <h2>{formatWater(current)}</h2>
-            <p className="note">of {formatWater(target)} today</p>
-          </div>
-          <div className="waterHeaderSide">
-            <button className="clearSetupButton" type="button" onClick={() => setEditingTarget((currentValue) => !currentValue)}>
-              {editingTarget ? 'Done' : 'Edit'}
-            </button>
-            <div className="waterBottle" style={{ '--water-level': `${progress * 100}%` }} aria-hidden="true">
-              <div className="bottleCap" />
-              <div className="bottleBody">
-                <div className="waterFill">
-                  <span />
-                </div>
+          <div className="waterBottle" style={{ '--water-level': `${progress * 100}%` }} aria-hidden="true">
+            <div className="bottleCap" />
+            <div className="bottleBody">
+              <div className="waterFill">
+                <span />
               </div>
             </div>
+          </div>
+          <div className="waterReadout">
+            <div className="waterReadoutTop">
+              <div className="label">Water</div>
+              <button className="clearSetupButton waterEditButton" type="button" onClick={() => setEditingTarget((currentValue) => !currentValue)}>
+                {editingTarget ? 'Done' : 'Edit'}
+              </button>
+            </div>
+            <h2>{formatWater(current)}</h2>
+            <p className="note">of {formatWater(target)} today</p>
           </div>
         </div>
 

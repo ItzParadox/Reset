@@ -9,6 +9,7 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
   const [exportText, setExportText] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
   const [editingUnits, setEditingUnits] = useState(false);
+  const [draftUnits, setDraftUnits] = useState(state.settings.preferredUnits);
   const [exitingUnits, setExitingUnits] = useState('');
   const previousUnitsRef = useRef(state.settings.preferredUnits);
 
@@ -32,12 +33,21 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
     if (previousUnitsRef.current === units) return undefined;
     setExitingUnits(previousUnitsRef.current);
     previousUnitsRef.current = units;
-    const timer = window.setTimeout(() => setExitingUnits(''), 320);
+    const timer = window.setTimeout(() => setExitingUnits(''), 460);
     return () => window.clearTimeout(timer);
   }, [units]);
 
-  function saveUnits(nextUnits) {
-    onSaveSettings({ preferredUnits: nextUnits });
+  useEffect(() => {
+    if (!editingUnits) setDraftUnits(units);
+  }, [editingUnits, units]);
+
+  function toggleUnitEditor() {
+    if (!editingUnits) {
+      setDraftUnits(units);
+      setEditingUnits(true);
+      return;
+    }
+    onSaveSettings({ preferredUnits: draftUnits });
     setEditingUnits(false);
   }
 
@@ -50,14 +60,14 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
             <strong>{name}</strong>
             <p className="profileSubline">Here's where you stand right now</p>
           </div>
-          <button key={editingUnits ? 'done-units' : 'edit-units'} className="clearSetupButton profileEditButton" type="button" onClick={() => setEditingUnits((currentValue) => !currentValue)}>
+          <button key={editingUnits ? 'done-units' : 'edit-units'} className="clearSetupButton profileEditButton" type="button" onClick={toggleUnitEditor}>
             {editingUnits ? 'Done' : 'Edit units'}
           </button>
         </div>
         {editingUnits ? (
           <div className="unitSwitch settingsUnitSwitch" role="group" aria-label="Measurement units">
-            <button type="button" className={units === 'metric' ? 'on' : ''} onClick={() => saveUnits('metric')}>Metric</button>
-            <button type="button" className={units === 'imperial' ? 'on' : ''} onClick={() => saveUnits('imperial')}>Imperial</button>
+            <button type="button" className={draftUnits === 'metric' ? 'on' : ''} onClick={() => setDraftUnits('metric')}>Metric</button>
+            <button type="button" className={draftUnits === 'imperial' ? 'on' : ''} onClick={() => setDraftUnits('imperial')}>Imperial</button>
           </div>
         ) : null}
         <div className="profileUnitStage" data-direction={units === 'imperial' ? 'right' : 'left'}>
