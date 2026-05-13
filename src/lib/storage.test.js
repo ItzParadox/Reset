@@ -81,7 +81,7 @@ describe('state normalization and persistence', () => {
         activityLevel: 'bad',
         medicationName: 'wegovy',
       },
-      healthPlan: { selectedDeficitLevel: 'bad', calorieTarget: '1800.9' },
+      healthPlan: { selectedDeficitLevel: 'bad', deficitPercentage: '0.15', calorieTarget: '1800.9' },
       settings: { hydrationTarget: '2', waterStepMl: '5000' },
       weightLogs: [
         { id: 'old', weightKg: 101, loggedAt: '2026-05-12', createdAt: '2026-05-12T10:00:00.000Z' },
@@ -106,6 +106,7 @@ describe('state normalization and persistence', () => {
     });
     expect(state.settings.hydrationTarget).toBe(2000);
     expect(state.settings.waterStepMl).toBe(2000);
+    expect(state.healthPlan.deficitPercentage).toBe(0.15);
     expect(state.weightLogs).toHaveLength(1);
     expect(state.dailyLogs['2026-05-13']).toMatchObject({ movementDone: true, waterMl: 500 });
     expect(state.medicationLogs['2026-05-13']).toMatchObject({ medicationName: 'wegovy', taken: true });

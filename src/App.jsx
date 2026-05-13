@@ -25,7 +25,7 @@ import {
   saveState,
   structuredCloneSafe,
 } from './lib/storage.js';
-import { calculatePlan } from './lib/calculations.js';
+import { calculateMaintenance, calculatePlan } from './lib/calculations.js';
 import { validateWeightKg } from './lib/validation.js';
 import { getInstallContext, registerAppServiceWorker } from './lib/pwa.js';
 
@@ -216,7 +216,7 @@ function AppContent() {
 
   function updatePlan(deficitLevel, warningAcknowledged = false) {
     commit((draft) => {
-      const baselineMaintenance = planMaintenanceBaseline(draft);
+      const baselineMaintenance = calculateMaintenance(draft.onboardingProfile) || draft.healthPlan.maintenanceCalories;
       const selectedPercentage = deficitPercentageFor(deficitLevel);
       draft.healthPlan = calculatePlan(draft.onboardingProfile, deficitLevel, warningAcknowledged);
       draft.healthPlan.maintenanceCalories = baselineMaintenance;
@@ -451,11 +451,4 @@ function deficitPercentageFor(deficitLevel) {
   if (deficitLevel === 'aggressive') return 0.25;
   if (deficitLevel === 'extreme') return 0.35;
   return 0.15;
-}
-
-function planMaintenanceBaseline(state) {
-  const target = Number(state.settings.calorieTarget || state.healthPlan.calorieTarget || 0);
-  const currentDeficit = Number(state.healthPlan.deficitPercentage || deficitPercentageFor(state.healthPlan.selectedDeficitLevel));
-  if (target > 0 && currentDeficit > 0 && currentDeficit < 1) return Math.round(target / (1 - currentDeficit));
-  return Number(state.healthPlan.maintenanceCalories || 0) || null;
 }

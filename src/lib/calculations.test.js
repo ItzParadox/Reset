@@ -31,6 +31,16 @@ const profile = {
   activityLevel: 'light',
 };
 
+const exportedBugProfile = {
+  age: 18,
+  sex: 'male',
+  heightCm: 152.4,
+  startWeightKg: 111.1,
+  currentWeightKg: 111.1,
+  goalWeightKg: 80.7,
+  activityLevel: 'sedentary',
+};
+
 describe('unit conversion helpers', () => {
   it('converts between metric and imperial weights', () => {
     expect(kgToLb(100)).toBe(220.5);
@@ -88,6 +98,54 @@ describe('calorie plan helpers', () => {
       warningAcknowledged: false,
     });
     expect(calculatePlan(profile, 'extreme', true).warningAcknowledged).toBe(true);
+  });
+
+  it('keeps plan switching idempotent for the exported bug profile', () => {
+    const expectedMaintenance = calculateMaintenance(exportedBugProfile);
+    const expectedTargets = {
+      moderate: Math.round(expectedMaintenance * 0.85),
+      aggressive: Math.round(expectedMaintenance * 0.75),
+      extreme: Math.round(expectedMaintenance * 0.65),
+    };
+
+    expect(expectedMaintenance).toBe(2375);
+    expect(planOptions(exportedBugProfile).map((option) => [option.key, option.calorieTarget])).toEqual([
+      ['moderate', expectedTargets.moderate],
+      ['aggressive', expectedTargets.aggressive],
+      ['extreme', expectedTargets.extreme],
+    ]);
+
+    const sequence = [
+      'moderate',
+      'aggressive',
+      'extreme',
+      'moderate',
+      'aggressive',
+      'moderate',
+      'extreme',
+      'moderate',
+    ];
+
+    const results = sequence.map((level) => calculatePlan(exportedBugProfile, level).calorieTarget);
+    expect(results).toEqual(sequence.map((level) => expectedTargets[level]));
+    expect(results.filter((target, index) => sequence[index] === 'moderate')).toEqual([
+      expectedTargets.moderate,
+      expectedTargets.moderate,
+      expectedTargets.moderate,
+      expectedTargets.moderate,
+    ]);
+  });
+
+  it('does not compound targets across repeated direct calculations', () => {
+    const sequence = Array.from({ length: 50 }, (_, index) => ['moderate', 'aggressive', 'extreme'][index % 3]);
+    const targets = sequence.map((level) => calculatePlan(exportedBugProfile, level).calorieTarget);
+
+    expect(new Set(targets)).toEqual(new Set([2019, 1781, 1544]));
+    targets.forEach((target) => {
+      expect(Number.isFinite(target)).toBe(true);
+      expect(target).toBeGreaterThan(0);
+      expect(target).toBeLessThan(5000);
+    });
   });
 });
 

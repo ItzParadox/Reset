@@ -336,7 +336,7 @@ function normaliseHealthPlan(plan = {}) {
     bmrCalories: cleanNullableInt(plan.bmrCalories),
     maintenanceCalories: cleanNullableInt(plan.maintenanceCalories),
     selectedDeficitLevel: ['moderate', 'aggressive', 'extreme'].includes(plan.selectedDeficitLevel) ? plan.selectedDeficitLevel : 'moderate',
-    deficitPercentage: cleanNullableNumber(plan.deficitPercentage) ?? 0.15,
+    deficitPercentage: cleanNullableRatio(plan.deficitPercentage) ?? 0.15,
     calorieTarget: cleanNullableInt(plan.calorieTarget),
     warningAcknowledged: plan.warningAcknowledged === true,
     calculatedAt: plan.calculatedAt || null,
@@ -469,6 +469,11 @@ function cleanOptionalInt(value, min, max) {
 function cleanNullableNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? round1(number) : null;
+}
+
+function cleanNullableRatio(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function cleanNullableInt(value) {

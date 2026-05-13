@@ -1,13 +1,10 @@
 import Card from '../components/Card.jsx';
-import { DEFICIT_OPTIONS, estimatePlanGoalDate, mealStructureForProfile } from '../lib/calculations.js';
+import { DEFICIT_OPTIONS, calculateMaintenance, estimatePlanGoalDate, mealStructureForProfile } from '../lib/calculations.js';
 
 export default function Food({ state, onUpdatePlan }) {
   const selected = state.healthPlan.selectedDeficitLevel;
   const structure = mealStructureForProfile(state);
-  const selectedPercentage = DEFICIT_OPTIONS[selected]?.percentage || state.healthPlan.deficitPercentage || 0.15;
-  const planMaintenance = state.settings.calorieTarget
-    ? Math.round(Number(state.settings.calorieTarget) / (1 - selectedPercentage))
-    : state.healthPlan.maintenanceCalories;
+  const planMaintenance = calculateMaintenance(state.onboardingProfile) || state.healthPlan.maintenanceCalories;
   const planGoalDate = estimatePlanGoalDate({
     ...state,
     healthPlan: {
