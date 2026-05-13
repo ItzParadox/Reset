@@ -7,11 +7,13 @@ function formatWater(value) {
   return `${amount}ml`;
 }
 
-export default function Water({ state, dailyLog, onAddWater, onResetWater, onSaveWaterStep }) {
+export default function Water({ state, dailyLog, onAddWater, onResetWater, onSaveWaterStep, onSaveHydrationTarget }) {
   const target = Number(state.settings.hydrationTarget || 2000);
   const current = Number(dailyLog.waterMl || 0);
   const step = Number(state.settings.waterStepMl || 250);
   const [draftStep, setDraftStep] = useState(String(step));
+  const [draftTarget, setDraftTarget] = useState(String(target));
+  const [targetError, setTargetError] = useState('');
   const progress = Math.min(1, target > 0 ? current / target : 0);
   const reached = current >= target;
 
@@ -19,12 +21,27 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
     setDraftStep(String(step));
   }, [step]);
 
+  useEffect(() => {
+    setDraftTarget(String(target));
+  }, [target]);
+
   function updateStep(value) {
     setDraftStep(value);
     const number = Number.parseInt(value, 10);
     if (Number.isFinite(number) && number >= 50 && number <= 2000) {
       onSaveWaterStep(number);
     }
+  }
+
+  function saveTarget(event) {
+    event.preventDefault();
+    const number = Number.parseInt(draftTarget, 10);
+    if (!Number.isFinite(number) || number < 250 || number > 10000) {
+      setTargetError('Use a target between 250ml and 10000ml.');
+      return;
+    }
+    setTargetError('');
+    onSaveHydrationTarget(number);
   }
 
   return (
@@ -62,7 +79,7 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
       </Card>
 
       <Card>
-        <div className="label">Pour size</div>
+        <div className="label">Water settings</div>
         <label>
           Amount per tap <span className="unitSuffix">ml</span>
           <input
@@ -75,7 +92,27 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
             onChange={(event) => updateStep(event.target.value)}
           />
         </label>
-        <p className="note">Default is 250ml. Use a realistic amount for your bottle, glass, or cup.</p>
+        <form onSubmit={saveTarget} className="waterTargetForm">
+          <label>
+            Daily target <span className="unitSuffix">ml</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min="250"
+              max="10000"
+              step="50"
+              value={draftTarget}
+              onChange={(event) => {
+                setTargetError('');
+                setDraftTarget(event.target.value);
+              }}
+              placeholder="e.g. 2000"
+            />
+          </label>
+          <button className="main secondary" type="submit">Update target</button>
+        </form>
+        {targetError ? <p className="note warn">{targetError}</p> : null}
+        <p className="note">Use realistic amounts for your bottle and daily hydration target.</p>
       </Card>
     </div>
   );

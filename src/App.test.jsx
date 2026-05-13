@@ -219,13 +219,54 @@ describe('Reset app integration', () => {
     await screen.findByText('No movement goal set', {}, { timeout: 2500 });
     expect(screen.queryByRole('button', { name: /^start$/i })).not.toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(/timer duration/i), '20');
+    await user.type(screen.getByLabelText(/daily movement goal/i), '20');
     await user.click(screen.getByRole('button', { name: /set timer/i }));
 
     await screen.findByText('20:00');
     expect(JSON.parse(localStorage.getItem('reset_state_v7')).ui.timer.durationSeconds).toBe(1200);
     await user.click(screen.getByRole('button', { name: /^start$/i }));
     await waitFor(() => expect(screen.getByRole('button', { name: /^start$/i })).toHaveClass('timerStart'));
+  });
+
+  it('edits movement goal from Today and hydration target from Water', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
+      settings: { preferredUnits: 'metric', calorieTarget: 2019, walkMinutes: 20, hydrationTarget: 2000 },
+      healthPlan: {
+        bmrCalories: 1979,
+        maintenanceCalories: 2375,
+        selectedDeficitLevel: 'moderate',
+        deficitPercentage: 0.15,
+        calorieTarget: 2019,
+      },
+      ui: { activeTab: 'today', timer: { durationSeconds: 1200, remainingSeconds: 1200 } },
+    })));
+
+    render(<App />);
+    await screen.findByText('20:00', {}, { timeout: 2500 });
+    expect(screen.queryByLabelText(/daily movement goal/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit/i }));
+    const movementInput = screen.getByLabelText(/daily movement goal/i);
+    await user.clear(movementInput);
+    await user.type(movementInput, '30');
+    await user.click(screen.getByRole('button', { name: /update goal/i }));
+
+    await screen.findByText('30:00');
+    expect(JSON.parse(localStorage.getItem('reset_state_v7')).settings.walkMinutes).toBe(30);
+
+    await user.click(screen.getByRole('button', { name: /water/i }));
+    await screen.findByText(/of 2L today/i);
+    const targetInput = screen.getByLabelText(/daily target/i);
+    await user.clear(targetInput);
+    await user.type(targetInput, '2500');
+    await user.click(screen.getByRole('button', { name: /update target/i }));
+
+    await screen.findByText(/of 2.5L today/i);
+    expect(JSON.parse(localStorage.getItem('reset_state_v7')).settings.hydrationTarget).toBe(2500);
+
+    await user.click(screen.getByRole('button', { name: /user/i }));
+    expect(screen.queryByText(/daily targets/i)).not.toBeInTheDocument();
   });
 
   it('returns to the original Moderate calories after switching plans from onboarding data', async () => {

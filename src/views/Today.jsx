@@ -6,6 +6,7 @@ import { INPUT_LIMITS, validInteger } from '../lib/validation.js';
 export default function Today({ state, dailyLog, timerText, timerRunning, onToggleDaily, onSaveDailyNotes, onTimerStart, onTimerPause, onTimerReset, onSaveTimerDuration }) {
   const walkMins = state.settings.walkMinutes;
   const [timerMinutes, setTimerMinutes] = useState(walkMins || '');
+  const [editingTimer, setEditingTimer] = useState(!walkMins);
   const [timerError, setTimerError] = useState('');
   const hydration = state.settings.hydrationTarget;
   const waterMl = Number(dailyLog.waterMl || 0);
@@ -31,6 +32,7 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
     }
     setTimerError('');
     onSaveTimerDuration(Number(timerMinutes));
+    setEditingTimer(false);
   }
 
   return (
@@ -58,7 +60,14 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
       </Card>
 
       <Card>
-        <div className="label">Movement timer</div>
+        <div className="cardTitleRow compactTitleRow">
+          <div className="label">Movement timer</div>
+          {hasTimerGoal ? (
+            <button className="clearSetupButton" type="button" onClick={() => setEditingTimer((current) => !current)}>
+              {editingTimer ? 'Done' : 'Edit'}
+            </button>
+          ) : null}
+        </div>
         {hasTimerGoal ? (
           <>
             <div className="big">{timerText}</div>
@@ -92,25 +101,29 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
             <p className="note">Set one to start using the timer.</p>
           </>
         )}
-        <form onSubmit={saveTimer} className="timerSetForm">
-          <label>
-            Timer duration <span className="unitSuffix">min</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={INPUT_LIMITS.walkMinutes.min}
-              max={INPUT_LIMITS.walkMinutes.max}
-              value={timerMinutes}
-              onChange={(event) => {
-                setTimerError('');
-                setTimerMinutes(event.target.value);
-              }}
-              placeholder="e.g. 20"
-            />
-          </label>
-          <button className="main secondary" type="submit">{hasTimerGoal ? 'Update timer' : 'Set timer'}</button>
-        </form>
-        {timerError ? <p className="note warn">{timerError}</p> : null}
+        {editingTimer || !hasTimerGoal ? (
+          <>
+            <form onSubmit={saveTimer} className="timerSetForm">
+              <label>
+                Daily movement goal <span className="unitSuffix">min</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={INPUT_LIMITS.walkMinutes.min}
+                  max={INPUT_LIMITS.walkMinutes.max}
+                  value={timerMinutes}
+                  onChange={(event) => {
+                    setTimerError('');
+                    setTimerMinutes(event.target.value);
+                  }}
+                  placeholder="e.g. 20"
+                />
+              </label>
+              <button className="main secondary" type="submit">{hasTimerGoal ? 'Update goal' : 'Set timer'}</button>
+            </form>
+            {timerError ? <p className="note warn">{timerError}</p> : null}
+          </>
+        ) : null}
       </Card>
 
       <Card>

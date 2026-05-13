@@ -124,6 +124,9 @@ button.main:active, .choice:active { opacity: .72; }
 .timerBtn.timerReset:active { transform: scale(.96); opacity: .65; }
 .timerSetForm { margin-top: 12px; display: grid; gap: 8px; }
 .timerSetForm .main { margin-top: 0; }
+.waterTargetForm { margin-top: 10px; display: grid; gap: 8px; }
+.waterTargetForm .main { margin-top: 0; }
+.compactTitleRow { margin-bottom: 8px; }
 
 /* ─── History ────────────────────────────────────────────────── */
 .waterCard { overflow: hidden; }

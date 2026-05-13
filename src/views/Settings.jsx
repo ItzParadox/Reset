@@ -1,23 +1,13 @@
-import { useState } from 'react';
 import Card from '../components/Card.jsx';
 import MetricCard from '../components/MetricCard.jsx';
 import { MEDICATION_OPTIONS, bmiClassName, bmiVisualStyle } from '../lib/calculations.js';
 import { currentWeight } from '../lib/storage.js';
 import { formatHeight, formatWeight } from '../lib/units.js';
+import { useState } from 'react';
 
-export default function Settings({ state, onSaveSettings, onExportData, onCopyExport, onResetLocalData }) {
-  const [walkMinutes, setWalkMinutes] = useState(state.settings.walkMinutes ?? '');
-  const [hydrationTarget, setHydrationTarget] = useState(state.settings.hydrationTarget ?? '');
+export default function Settings({ state, onExportData, onCopyExport, onResetLocalData }) {
   const [exportText, setExportText] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
-
-  function save(event) {
-    event.preventDefault();
-    onSaveSettings({
-      walkMinutes: walkMinutes === '' ? null : Number(walkMinutes),
-      hydrationTarget: hydrationTarget === '' ? null : Number(hydrationTarget),
-    });
-  }
 
   async function copy() {
     if (!exportText) return;
@@ -57,22 +47,6 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
           <MetricCard label="Maintenance" value={state.healthPlan.maintenanceCalories || 'calculating'} note="estimated kcal/day" />
         </div>
         <p className="note">{formatHeight(state.onboardingProfile.heightCm, units)} {' | '} {state.onboardingProfile.activityLevel} activity {' | '} {med || 'no medication'}</p>
-      </Card>
-
-      <Card>
-        <div className="label">Daily targets</div>
-        <form onSubmit={save} className="formGrid">
-          <label>
-            Movement target <span className="unitSuffix">min/day</span>
-            <input type="number" inputMode="numeric" value={walkMinutes} onChange={(e) => setWalkMinutes(e.target.value)} placeholder="optional" />
-          </label>
-          <label>
-            Hydration target <span className="unitSuffix">ml/day</span>
-            <input type="number" inputMode="numeric" value={hydrationTarget} onChange={(e) => setHydrationTarget(e.target.value)} placeholder="e.g. 2000" />
-          </label>
-          <button className="main" type="submit">Save targets</button>
-        </form>
-        <p className="note">Calories come from your plan. Hydration is in ml, so 2000 ml is 2L.</p>
       </Card>
 
       <Card>

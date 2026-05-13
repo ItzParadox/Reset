@@ -260,6 +260,11 @@ function AppContent() {
     saveSettings({ waterStepMl: cleanAmount });
   }
 
+  function saveHydrationTarget(amountMl) {
+    const cleanAmount = Math.min(Math.max(Number.parseInt(amountMl, 10) || 2000, 250), 10000);
+    saveSettings({ hydrationTarget: cleanAmount });
+  }
+
   function saveDailyNotes(notes) {
     commit((draft) => {
       const log = draft.dailyLogs[todayKey] || createDailyLog(todayKey);
@@ -385,7 +390,7 @@ function AppContent() {
         onSaveTimerDuration={(minutes) => saveSettings({ walkMinutes: minutes })}
       />
     ),
-    water: <Water state={state} dailyLog={todayDailyLog} onAddWater={addWater} onResetWater={resetWater} onSaveWaterStep={saveWaterStep} />,
+    water: <Water state={state} dailyLog={todayDailyLog} onAddWater={addWater} onResetWater={resetWater} onSaveWaterStep={saveWaterStep} onSaveHydrationTarget={saveHydrationTarget} />,
     weight: <Weight state={state} logs={state.weightLogs} onSaveWeight={saveWeight} />,
     food: <Food state={state} onUpdatePlan={updatePlan} />,
     meds: <Meds state={state} medicationLog={currentMedicationLog} onSaveMedicationLog={saveMedicationLog} />,
