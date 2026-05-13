@@ -3,12 +3,14 @@ import MetricCard from '../components/MetricCard.jsx';
 import { MEDICATION_OPTIONS, bmiClassName, bmiVisualStyle } from '../lib/calculations.js';
 import { currentWeight } from '../lib/storage.js';
 import { formatHeight, formatWeight } from '../lib/units.js';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function Settings({ state, onSaveSettings, onExportData, onCopyExport, onResetLocalData }) {
   const [exportText, setExportText] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
   const [editingUnits, setEditingUnits] = useState(false);
+  const [exitingUnits, setExitingUnits] = useState('');
+  const previousUnitsRef = useRef(state.settings.preferredUnits);
 
   async function copy() {
     if (!exportText) return;
@@ -26,6 +28,14 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
   const start = Number(state.onboardingProfile.startWeightKg || current || 0);
   const units = state.settings.preferredUnits;
 
+  useEffect(() => {
+    if (previousUnitsRef.current === units) return undefined;
+    setExitingUnits(previousUnitsRef.current);
+    previousUnitsRef.current = units;
+    const timer = window.setTimeout(() => setExitingUnits(''), 320);
+    return () => window.clearTimeout(timer);
+  }, [units]);
+
   function saveUnits(nextUnits) {
     onSaveSettings({ preferredUnits: nextUnits });
     setEditingUnits(false);
@@ -40,7 +50,7 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
             <strong>{name}</strong>
             <p className="profileSubline">Here's where you stand right now</p>
           </div>
-          <button className="clearSetupButton profileEditButton" type="button" onClick={() => setEditingUnits((currentValue) => !currentValue)}>
+          <button key={editingUnits ? 'done-units' : 'edit-units'} className="clearSetupButton profileEditButton" type="button" onClick={() => setEditingUnits((currentValue) => !currentValue)}>
             {editingUnits ? 'Done' : 'Edit units'}
           </button>
         </div>
@@ -50,18 +60,16 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
             <button type="button" className={units === 'imperial' ? 'on' : ''} onClick={() => saveUnits('imperial')}>Imperial</button>
           </div>
         ) : null}
-        <div className="currentWeightBlock">
-          <div className="label">Current weight</div>
-          <strong className="profileWeightNumber">{formatWeight(current, units, 'not logged')}</strong>
-          <p>Started at {formatWeight(start, units, '-')}</p>
+        <div className="profileUnitStage" data-direction={units === 'imperial' ? 'right' : 'left'}>
+          {exitingUnits ? (
+            <div className="profileUnitSnapshot exiting" aria-hidden="true">
+              {profileUnitContent(exitingUnits)}
+            </div>
+          ) : null}
+          <div className="profileUnitSnapshot entering" key={units}>
+            {profileUnitContent(units)}
+          </div>
         </div>
-        <div className="profileMetrics">
-          <MetricCard label="Goal" value={formatWeight(state.onboardingProfile.goalWeightKg, units, 'not set')} note="target weight" />
-          <MetricCard className="bmiMetricCard" label="BMI" value={state.healthPlan.bmi || 'pending'} note="current estimate" />
-          <MetricCard label="Calories" value={state.settings.calorieTarget || 'not set'} note="daily target" />
-          <MetricCard label="Maintenance" value={state.healthPlan.maintenanceCalories || 'calculating'} note="estimated kcal/day" />
-        </div>
-        <p className="note">{formatHeight(state.onboardingProfile.heightCm, units)} {' | '} {state.onboardingProfile.activityLevel} activity {' | '} {med || 'no medication'}</p>
       </Card>
 
       <Card>
@@ -80,4 +88,23 @@ export default function Settings({ state, onSaveSettings, onExportData, onCopyEx
       </Card>
     </div>
   );
+
+  function profileUnitContent(displayUnits) {
+    return (
+      <>
+        <div className="currentWeightBlock">
+          <div className="label">Current weight</div>
+          <strong className="profileWeightNumber">{formatWeight(current, displayUnits, 'not logged')}</strong>
+          <p>Started at {formatWeight(start, displayUnits, '-')}</p>
+        </div>
+        <div className="profileMetrics">
+          <MetricCard label="Goal" value={formatWeight(state.onboardingProfile.goalWeightKg, displayUnits, 'not set')} note="target weight" />
+          <MetricCard className="bmiMetricCard" label="BMI" value={state.healthPlan.bmi || 'pending'} note="current estimate" />
+          <MetricCard label="Calories" value={state.settings.calorieTarget || 'not set'} note="daily target" />
+          <MetricCard label="Maintenance" value={state.healthPlan.maintenanceCalories || 'calculating'} note="estimated kcal/day" />
+        </div>
+        <p className="note">{formatHeight(state.onboardingProfile.heightCm, displayUnits)} {' | '} {state.onboardingProfile.activityLevel} activity {' | '} {med || 'no medication'}</p>
+      </>
+    );
+  }
 }
