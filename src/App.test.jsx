@@ -257,6 +257,7 @@ describe('Reset app integration', () => {
 
     await user.click(screen.getByRole('button', { name: /water/i }));
     await screen.findByText(/of 2L today/i);
+    await user.click(screen.getByRole('button', { name: /edit/i }));
     const targetInput = screen.getByLabelText(/daily target/i);
     await user.clear(targetInput);
     await user.type(targetInput, '2500');

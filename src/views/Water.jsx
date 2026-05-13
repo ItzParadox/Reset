@@ -13,6 +13,7 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
   const step = Number(state.settings.waterStepMl || 250);
   const [draftStep, setDraftStep] = useState(String(step));
   const [draftTarget, setDraftTarget] = useState(String(target));
+  const [editingTarget, setEditingTarget] = useState(false);
   const [targetError, setTargetError] = useState('');
   const progress = Math.min(1, target > 0 ? current / target : 0);
   const reached = current >= target;
@@ -42,6 +43,7 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
     }
     setTargetError('');
     onSaveHydrationTarget(number);
+    setEditingTarget(false);
   }
 
   return (
@@ -53,15 +55,45 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
             <h2>{formatWater(current)}</h2>
             <p className="note">of {formatWater(target)} today</p>
           </div>
-          <div className="waterBottle" style={{ '--water-level': `${progress * 100}%` }} aria-hidden="true">
-            <div className="bottleCap" />
-            <div className="bottleBody">
-              <div className="waterFill">
-                <span />
+          <div className="waterHeaderSide">
+            <button className="clearSetupButton" type="button" onClick={() => setEditingTarget((currentValue) => !currentValue)}>
+              {editingTarget ? 'Done' : 'Edit'}
+            </button>
+            <div className="waterBottle" style={{ '--water-level': `${progress * 100}%` }} aria-hidden="true">
+              <div className="bottleCap" />
+              <div className="bottleBody">
+                <div className="waterFill">
+                  <span />
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        {editingTarget ? (
+          <>
+            <form onSubmit={saveTarget} className="waterTargetForm">
+              <label>
+                Daily target <span className="unitSuffix">ml</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min="250"
+                  max="10000"
+                  step="50"
+                  value={draftTarget}
+                  onChange={(event) => {
+                    setTargetError('');
+                    setDraftTarget(event.target.value);
+                  }}
+                  placeholder="e.g. 2000"
+                />
+              </label>
+              <button className="main secondary" type="submit">Update target</button>
+            </form>
+            {targetError ? <p className="note warn">{targetError}</p> : null}
+          </>
+        ) : null}
 
         {reached ? (
           <div className="hydrationWin">
@@ -79,7 +111,7 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
       </Card>
 
       <Card>
-        <div className="label">Water settings</div>
+        <div className="label">Pour size</div>
         <label>
           Amount per tap <span className="unitSuffix">ml</span>
           <input
@@ -92,27 +124,7 @@ export default function Water({ state, dailyLog, onAddWater, onResetWater, onSav
             onChange={(event) => updateStep(event.target.value)}
           />
         </label>
-        <form onSubmit={saveTarget} className="waterTargetForm">
-          <label>
-            Daily target <span className="unitSuffix">ml</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min="250"
-              max="10000"
-              step="50"
-              value={draftTarget}
-              onChange={(event) => {
-                setTargetError('');
-                setDraftTarget(event.target.value);
-              }}
-              placeholder="e.g. 2000"
-            />
-          </label>
-          <button className="main secondary" type="submit">Update target</button>
-        </form>
-        {targetError ? <p className="note warn">{targetError}</p> : null}
-        <p className="note">Use realistic amounts for your bottle and daily hydration target.</p>
+        <p className="note">Default is 250ml. Use a realistic amount for your bottle, glass, or cup.</p>
       </Card>
     </div>
   );

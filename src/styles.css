@@ -131,6 +131,7 @@ button.main:active, .choice:active { opacity: .72; }
 /* ─── History ────────────────────────────────────────────────── */
 .waterCard { overflow: hidden; }
 .waterHeader { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.waterHeaderSide { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .waterHeader h2 { margin-top: 4px; color: #fff; font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: clamp(44px, 13vw, 58px); line-height: .88; letter-spacing: -.075em; }
 .waterBottle { width: 112px; flex: 0 0 112px; display: flex; flex-direction: column; align-items: center; }
 .bottleCap { width: 42px; height: 18px; border: 2px solid rgba(216,255,90,.42); border-bottom: 0; border-radius: 10px 10px 3px 3px; background: rgba(216,255,90,.06); }
