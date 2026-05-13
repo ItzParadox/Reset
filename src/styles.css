@@ -408,9 +408,12 @@ button.main:active, .choice:active { opacity: .72; }
 .profileCard { overflow: hidden; }
 .profileSummary { padding: 16px; }
 .profileTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.profileTop > div { min-width: 0; }
 .profileTop strong { display: block; font-size: 22px; color: #fff; letter-spacing: -.035em; }
 .profileTop span { border: 1px solid currentColor; border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 800; color: var(--text); background: rgba(255,255,255,.04); }
 .profileSubline { margin-top: 3px; color: var(--dim); font-size: 12px; line-height: 1.3; }
+.profileEditButton { max-width: 96px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.settingsUnitSwitch { margin: -2px 0 12px; }
 .profileMetrics { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .profileMetrics .card { margin-bottom: 0; padding: 12px; background: rgba(0,0,0,.16); min-height: 116px; display: flex; flex-direction: column; justify-content: center; }
 .profileSummary > .note { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.06); }

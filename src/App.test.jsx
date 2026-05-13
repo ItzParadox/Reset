@@ -201,6 +201,37 @@ describe('Reset app integration', () => {
     expect(screen.queryByText(/95\.3kg/)).not.toBeInTheDocument();
   });
 
+  it('changes preferred units from the User profile card without changing stored kg data', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
+      settings: { preferredUnits: 'imperial', calorieTarget: 1781 },
+      healthPlan: {
+        bmrCalories: 1979,
+        maintenanceCalories: 2375,
+        selectedDeficitLevel: 'aggressive',
+        deficitPercentage: 0.25,
+        calorieTarget: 1781,
+      },
+      ui: { activeTab: 'settings' },
+    })));
+
+    render(<App />);
+    await screen.findByText('244.9lb', {}, { timeout: 2500 });
+    expect(screen.getByText('177.9lb')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit units/i }));
+    await user.click(screen.getByRole('button', { name: /^metric$/i }));
+
+    await screen.findByText('111.1kg');
+    expect(screen.getByText('80.7kg')).toBeInTheDocument();
+    const stored = JSON.parse(localStorage.getItem('reset_state_v7'));
+    expect(stored.settings.preferredUnits).toBe('metric');
+    expect(stored.onboardingProfile.currentWeightKg).toBe(111.1);
+    expect(stored.weightLogs[0].weightKg).toBe(111.1);
+    expect(stored.settings.calorieTarget).toBe(1781);
+    expect(stored.healthPlan.maintenanceCalories).toBe(2375);
+  });
+
   it('shows a movement timer empty state and starts after setting a duration', async () => {
     const user = userEvent.setup();
     localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
