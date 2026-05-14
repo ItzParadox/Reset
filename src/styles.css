@@ -450,7 +450,9 @@ button.main:active, .choice:active { opacity: .72; }
 .progressOpen .track { display: block; margin-top: 9px; }
 .progressOpen .fill { display: block; animation: progressSettle .7s cubic-bezier(.2,1,.25,1) both; }
 .projectionBackdrop { align-items: flex-start; padding: calc(env(safe-area-inset-top) + 18px) 14px calc(env(safe-area-inset-bottom) + 96px); overflow: auto; z-index: 120; }
+.projectionBackdrop.closing { animation: projectionBackdropOut .24s ease-in both; }
 .projectionModal { position: relative; width: min(420px, 100%); max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 114px); margin: 0; padding: 16px; overflow: auto; background: #080808; border-color: rgba(216,255,90,.28); box-shadow: 0 28px 90px rgba(0,0,0,.58), 0 0 0 1px rgba(216,255,90,.06) inset; animation: modalIn .32s cubic-bezier(.2,1.08,.2,1) both; }
+.projectionModal.closing { animation: projectionModalOut .24s cubic-bezier(.3,0,.2,1) both; pointer-events: none; }
 .projectionModal h2 { margin: 2px 44px 0 0; color: #fff; font-size: 27px; line-height: 1; letter-spacing: -.045em; }
 .projectionModal > .note { margin-top: 7px; }
 .projectionClose { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(216,255,90,.32); border-radius: 12px; background: rgba(216,255,90,.075); color: var(--yes); box-shadow: inset 0 0 0 1px rgba(255,255,255,.02); }
@@ -625,6 +627,8 @@ button.main:active, .choice:active { opacity: .72; }
 @keyframes toastSlideAwayTop { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -120%); } }
 @keyframes modalBackdropIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modalIn { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes projectionBackdropOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes projectionModalOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(10px) scale(.975); } }
 @keyframes confettiBurst {
   0%   { opacity: 0; transform: translate(-50%, -50%) rotate(0deg) scale(.8); }
   10%  { opacity: 1; }

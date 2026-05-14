@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Card from '../components/Card.jsx';
 import MetricCard from '../components/MetricCard.jsx';
@@ -190,21 +190,64 @@ function buildProjectionChart({ state, current, start, target, projection, units
 }
 
 function ProjectionModal({ state, current, start, target, projection, units, onClose }) {
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef(null);
   const chart = buildProjectionChart({ state, current, start, target, projection, units });
   const latest = chart.actual[chart.actual.length - 1];
 
+  function requestClose() {
+    if (closing) return;
+    setClosing(true);
+    closeTimer.current = window.setTimeout(onClose, 240);
+  }
+
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const html = document.documentElement;
+    const previousBody = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+    };
+    const previousHtmlOverflow = html.style.overflow;
+
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+    html.style.overflow = 'hidden';
+
+    return () => {
+      window.clearTimeout(closeTimer.current);
+      body.style.overflow = previousBody.overflow;
+      body.style.position = previousBody.position;
+      body.style.top = previousBody.top;
+      body.style.left = previousBody.left;
+      body.style.right = previousBody.right;
+      body.style.width = previousBody.width;
+      html.style.overflow = previousHtmlOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') requestClose();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  }, [closing]);
 
   return createPortal((
-    <div className="modalBackdrop projectionBackdrop" role="dialog" aria-modal="true" aria-labelledby="projection-title" onClick={onClose}>
-      <div className="projectionModal card" onClick={(event) => event.stopPropagation()}>
-        <button className="projectionClose" type="button" onClick={onClose} aria-label="Close projection"><span aria-hidden="true" /></button>
+    <div className={`modalBackdrop projectionBackdrop ${closing ? 'closing' : ''}`} role="dialog" aria-modal="true" aria-labelledby="projection-title" onClick={requestClose}>
+      <div className={`projectionModal card ${closing ? 'closing' : ''}`} onClick={(event) => event.stopPropagation()}>
+        <button className="projectionClose" type="button" onClick={requestClose} aria-label="Close projection"><span aria-hidden="true" /></button>
         <div className="label">Projection</div>
         <h2 id="projection-title">Weight timeline</h2>
         <p className="note">
