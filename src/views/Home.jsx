@@ -203,7 +203,7 @@ function ProjectionModal({ state, current, start, target, projection, units, onC
   return (
     <div className="modalBackdrop projectionBackdrop" role="dialog" aria-modal="true" aria-labelledby="projection-title" onClick={onClose}>
       <div className="projectionModal card" onClick={(event) => event.stopPropagation()}>
-        <button className="projectionClose" type="button" onClick={onClose} aria-label="Close projection">X</button>
+        <button className="projectionClose" type="button" onClick={onClose} aria-label="Close projection"><span aria-hidden="true" /></button>
         <div className="label">Projection</div>
         <h2 id="projection-title">Weight timeline</h2>
         <p className="note">
@@ -284,7 +284,7 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
           <span className="progressOpenTop">
             <span>
               <b>{formatWeight(remaining, units, 'Set a goal')} left</b>
-              <small>Open accurate projection graph</small>
+              <small>Open projection graph</small>
             </span>
             <em>{Math.round(pct)}%</em>
           </span>
