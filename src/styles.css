@@ -449,8 +449,8 @@ button.main:active, .choice:active { opacity: .72; }
 .progressOpenTop em { flex: 0 0 auto; color: var(--yes); font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-style: normal; font-size: 13px; padding: 6px 8px; border: 1px solid rgba(216,255,90,.22); border-radius: 999px; background: rgba(216,255,90,.07); }
 .progressOpen .track { display: block; margin-top: 9px; }
 .progressOpen .fill { display: block; animation: progressSettle .7s cubic-bezier(.2,1,.25,1) both; }
-.projectionBackdrop { align-items: flex-start; padding-top: calc(env(safe-area-inset-top) + 26px); overflow: auto; }
-.projectionModal { position: relative; width: min(420px, 100%); max-height: calc(100dvh - 52px); margin: 0; padding: 16px; overflow: auto; background: #080808; border-color: rgba(216,255,90,.28); box-shadow: 0 28px 90px rgba(0,0,0,.58), 0 0 0 1px rgba(216,255,90,.06) inset; animation: modalIn .32s cubic-bezier(.2,1.08,.2,1) both; }
+.projectionBackdrop { align-items: flex-start; padding: calc(env(safe-area-inset-top) + 18px) 14px calc(env(safe-area-inset-bottom) + 96px); overflow: auto; z-index: 120; }
+.projectionModal { position: relative; width: min(420px, 100%); max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 114px); margin: 0; padding: 16px; overflow: auto; background: #080808; border-color: rgba(216,255,90,.28); box-shadow: 0 28px 90px rgba(0,0,0,.58), 0 0 0 1px rgba(216,255,90,.06) inset; animation: modalIn .32s cubic-bezier(.2,1.08,.2,1) both; }
 .projectionModal h2 { margin: 2px 44px 0 0; color: #fff; font-size: 27px; line-height: 1; letter-spacing: -.045em; }
 .projectionModal > .note { margin-top: 7px; }
 .projectionClose { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(216,255,90,.32); border-radius: 12px; background: rgba(216,255,90,.075); color: var(--yes); box-shadow: inset 0 0 0 1px rgba(255,255,255,.02); }
@@ -458,20 +458,24 @@ button.main:active, .choice:active { opacity: .72; }
 .projectionClose span::before, .projectionClose span::after { content: ''; position: absolute; left: 50%; top: 50%; width: 18px; height: 2px; border-radius: 999px; background: var(--yes); transform-origin: center; }
 .projectionClose span::before { transform: translate(-50%, -50%) rotate(45deg); }
 .projectionClose span::after { transform: translate(-50%, -50%) rotate(-45deg); }
-.projectionChart { position: relative; height: 230px; margin-top: 12px; overflow: hidden; border-radius: 18px; background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)); border: 1px solid rgba(255,255,255,.075); }
-.projectionChart svg { position: absolute; inset: 18px 22px 36px 44px; width: calc(100% - 66px); height: calc(100% - 54px); overflow: visible; }
+.projectionJourney { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 12px; }
+.projectionJourney div { min-width: 0; padding: 9px 8px; border: 1px solid rgba(216,255,90,.12); border-radius: 13px; background: rgba(216,255,90,.035); }
+.projectionJourney span { display: block; color: var(--dim); font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .09em; }
+.projectionJourney b { display: block; margin-top: 5px; color: #fff; font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: clamp(11px, 3vw, 13px); line-height: 1.05; letter-spacing: -.035em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.projectionChart { position: relative; height: 248px; margin-top: 12px; overflow: hidden; border-radius: 18px; background: radial-gradient(circle at 78% 18%, rgba(216,255,90,.06), transparent 34%), linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)); border: 1px solid rgba(255,255,255,.075); }
+.projectionChart svg { position: absolute; inset: 22px 28px 42px 52px; width: calc(100% - 80px); height: calc(100% - 64px); overflow: visible; }
 .projectionChart line { stroke: rgba(255,255,255,.07); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .projectionChart path { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.actualLine { stroke: #fff; stroke-width: 3.2; filter: drop-shadow(0 8px 16px rgba(255,255,255,.08)); animation: trendDraw .7s cubic-bezier(.2,1,.25,1) both; }
-.projectedLine { stroke: var(--yes); stroke-width: 3.2; stroke-dasharray: 5 5; filter: drop-shadow(0 8px 16px rgba(216,255,90,.1)); animation: trendDraw .82s cubic-bezier(.2,1,.25,1) .12s both; }
-.actualDot { fill: #fff; stroke: #080808; stroke-width: 1; vector-effect: non-scaling-stroke; }
-.currentDot { fill: #7ebcff; stroke: #080808; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
-.goalDot { fill: var(--yes); stroke: #080808; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.actualLine { stroke: rgba(255,255,255,.92); stroke-width: 3.4; filter: drop-shadow(0 8px 16px rgba(255,255,255,.08)); animation: trendDraw .7s cubic-bezier(.2,1,.25,1) both; }
+.projectedLine { stroke: var(--yes); stroke-width: 3.6; stroke-dasharray: 5 5; filter: drop-shadow(0 8px 16px rgba(216,255,90,.14)); animation: trendDraw .82s cubic-bezier(.2,1,.25,1) .12s both; }
+.actualDot { fill: #fff; stroke: #080808; stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+.currentDot { fill: #7ebcff; stroke: #080808; stroke-width: 1.8; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 8px rgba(126,188,255,.34)); }
+.goalDot { fill: var(--yes); stroke: #080808; stroke-width: 1.8; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 10px rgba(216,255,90,.36)); }
 .chartWeight, .chartDate { position: absolute; color: var(--dim); font-size: 11px; font-weight: 850; line-height: 1; }
-.chartWeight.high { top: 20px; left: 12px; }
-.chartWeight.low { bottom: 42px; left: 12px; }
-.chartDate.start { left: 44px; bottom: 13px; }
-.chartDate.end { right: 16px; bottom: 13px; }
+.chartWeight.high { top: 22px; left: 13px; }
+.chartWeight.low { bottom: 48px; left: 13px; }
+.chartDate.start { left: 52px; bottom: 15px; }
+.chartDate.end { right: 18px; bottom: 15px; }
 .projectionStats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
 .projectionStats div { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.035); }
 .projectionStats div:last-child { grid-column: 1 / -1; }

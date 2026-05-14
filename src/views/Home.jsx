@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Card from '../components/Card.jsx';
 import MetricCard from '../components/MetricCard.jsx';
 import { currentWeight } from '../lib/storage.js';
@@ -200,7 +201,7 @@ function ProjectionModal({ state, current, start, target, projection, units, onC
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
-  return (
+  return createPortal((
     <div className="modalBackdrop projectionBackdrop" role="dialog" aria-modal="true" aria-labelledby="projection-title" onClick={onClose}>
       <div className="projectionModal card" onClick={(event) => event.stopPropagation()}>
         <button className="projectionClose" type="button" onClick={onClose} aria-label="Close projection"><span aria-hidden="true" /></button>
@@ -211,6 +212,12 @@ function ProjectionModal({ state, current, start, target, projection, units, onC
             ? `Based on your current weight, goal, and active calorie plan, Reset projects ${projection.label}.`
             : 'Log more weight data or set a calorie plan to calculate a projected arrival.'}
         </p>
+
+        <div className="projectionJourney">
+          <div><span>Start</span><b>{formatWeight(start, units, 'not set')}</b></div>
+          <div><span>Current</span><b>{formatWeight(current, units, 'not set')}</b></div>
+          <div><span>Goal</span><b>{formatWeight(target, units, 'not set')}</b></div>
+        </div>
 
         <div className="projectionChart">
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -250,7 +257,7 @@ function ProjectionModal({ state, current, start, target, projection, units, onC
         {latest ? <p className="note projectionFinePrint">Latest logged point: {formatWeight(latest.weightKg, units, '')} on {shortDate(latest.dateKey)}.</p> : null}
       </div>
     </div>
-  );
+  ), document.body);
 }
 
 export default function Home({ state, todayDailyLog, onChangeTab }) {
