@@ -230,9 +230,9 @@ export function estimatePlanGoalDate(state = {}) {
   const profile = state.onboardingProfile || {};
   const settings = state.settings || {};
   const plan = state.healthPlan || {};
-  const current = Number(profile.currentWeightKg || profile.startWeightKg || 0);
+  const current = latestWeightKg(state) || Number(profile.currentWeightKg || profile.startWeightKg || 0);
   const target = Number(profile.goalWeightKg || 0);
-  const maintenance = Number(plan.maintenanceCalories || 0);
+  const maintenance = Number(plan.maintenanceCalories || calculateMaintenance({ ...profile, currentWeightKg: current }) || 0);
   const calories = Number(settings.calorieTarget || plan.calorieTarget || 0);
   const dailyDeficit = maintenance - calories;
   const remainingKg = current - target;
@@ -251,6 +251,34 @@ export function estimatePlanGoalDate(state = {}) {
     days: estimatedDays,
     weeklyLossKg: round1((dailyDeficit * 7) / 7700),
   };
+}
+
+export function goalProjection(state = {}) {
+  const target = Number(state.onboardingProfile?.goalWeightKg || state.healthPlan?.targetWeightKg || 0);
+  const loggedProjection = estimateTargetDate(state.weightLogs, target);
+  const planProjection = estimatePlanGoalDate(state);
+
+  if (planProjection) {
+    return {
+      ...planProjection,
+      source: 'plan',
+      note: `Stay consistent with this plan and you are projected to reach your goal around ${planProjection.label}.`,
+    };
+  }
+
+  if (loggedProjection) {
+    return {
+      label: loggedProjection,
+      source: 'logs',
+      note: loggedProjection === 'Reached'
+        ? 'You have reached this weight goal.'
+        : 'Your recent logged trend points here.',
+      weeklyLossKg: null,
+      days: null,
+    };
+  }
+
+  return null;
 }
 
 export function weeklyChange(logs) {
@@ -282,4 +310,12 @@ function daysBetween(start, end) {
   const b = parseDate(end);
   if (!a || !b) return 0;
   return Math.round((b - a) / 86400000);
+}
+
+function latestWeightKg(state = {}) {
+  const logs = Array.isArray(state.weightLogs) ? state.weightLogs : [];
+  if (!logs.length) return null;
+  const latest = [...logs].sort((a, b) => String(b.loggedAt).localeCompare(String(a.loggedAt)) || String(b.createdAt).localeCompare(String(a.createdAt)))[0];
+  const value = Number(latest.weightKg ?? latest.weight);
+  return Number.isFinite(value) && value > 0 ? value : null;
 }

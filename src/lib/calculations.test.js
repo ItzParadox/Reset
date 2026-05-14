@@ -12,6 +12,7 @@ import {
   estimateTargetDate,
   feetInchesToCm,
   formatDoseMg,
+  goalProjection,
   healthyWeightRangeKg,
   kgToLb,
   lbToKg,
@@ -177,6 +178,56 @@ describe('projection helpers', () => {
       { loggedAt: '2026-01-15', weightKg: 98 },
     ])).toBe(-1);
     expect(weeklyChange([{ loggedAt: '2026-01-15', weightKg: 98 }])).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('uses the latest logged weight for the shared goal projection', () => {
+    vi.setSystemTime(new Date(2026, 0, 1));
+    const state = {
+      onboardingProfile: { currentWeightKg: 100, startWeightKg: 100, goalWeightKg: 90 },
+      healthPlan: { maintenanceCalories: 2500, calorieTarget: 2000 },
+      settings: { calorieTarget: 2000 },
+      weightLogs: [
+        { loggedAt: '2025-12-01', weightKg: 100, createdAt: '2025-12-01T09:00:00.000Z' },
+        { loggedAt: '2025-12-15', weightKg: 104, createdAt: '2025-12-15T09:00:00.000Z' },
+      ],
+    };
+
+    expect(estimatePlanGoalDate(state)).toMatchObject({ label: '05 Aug 2026', days: 216 });
+    expect(goalProjection(state)).toMatchObject({
+      label: '05 Aug 2026',
+      source: 'plan',
+      days: 216,
+    });
+
+    const fasterPlan = {
+      ...state,
+      healthPlan: { ...state.healthPlan, calorieTarget: 1875 },
+      settings: { calorieTarget: 1875 },
+    };
+    expect(goalProjection(fasterPlan)).toMatchObject({ label: '23 Jun 2026', source: 'plan' });
+    vi.useRealTimers();
+  });
+
+  it('prefers the active plan projection so plan changes update the shared date', () => {
+    vi.setSystemTime(new Date(2026, 0, 1));
+    const state = {
+      onboardingProfile: { currentWeightKg: 96, startWeightKg: 100, goalWeightKg: 90 },
+      healthPlan: { maintenanceCalories: 2500, calorieTarget: 2000 },
+      settings: { calorieTarget: 2000 },
+      weightLogs: [
+        { loggedAt: '2025-12-01', weightKg: 100, createdAt: '2025-12-01T09:00:00.000Z' },
+        { loggedAt: '2025-12-15', weightKg: 96, createdAt: '2025-12-15T09:00:00.000Z' },
+      ],
+    };
+
+    expect(estimateTargetDate(state.weightLogs, 90)).toBe('22 Jan 2026');
+    expect(goalProjection(state)).toMatchObject({ label: '04 Apr 2026', source: 'plan' });
+    expect(goalProjection({
+      ...state,
+      healthPlan: { ...state.healthPlan, calorieTarget: 1875 },
+      settings: { calorieTarget: 1875 },
+    })).toMatchObject({ label: '16 Mar 2026', source: 'plan' });
     vi.useRealTimers();
   });
 });

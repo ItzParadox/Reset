@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import Card from '../components/Card.jsx';
 import MetricCard from '../components/MetricCard.jsx';
 import { currentWeight } from '../lib/storage.js';
-import { bmiClassName, bmiVisualStyle, estimatePlanGoalDate, estimateTargetDate, weeklyChange } from '../lib/calculations.js';
+import { bmiClassName, bmiVisualStyle, formatDoseMg, goalProjection, weeklyChange } from '../lib/calculations.js';
 import { formatWeight, formatWeightDelta, weightUnit } from '../lib/units.js';
 
 function greeting(name) {
@@ -20,7 +21,77 @@ function lostCopy(lost, units) {
   return `${displayLost} down. That's real.`;
 }
 
+function latestLogAgeDays(logs) {
+  if (!Array.isArray(logs) || !logs.length) return null;
+  const latest = [...logs].sort((a, b) => String(b.loggedAt).localeCompare(String(a.loggedAt)) || String(b.createdAt).localeCompare(String(a.createdAt)))[0];
+  const logged = new Date(`${latest.loggedAt}T00:00:00`);
+  if (Number.isNaN(logged.getTime())) return null;
+  return Math.floor((new Date() - logged) / 86400000);
+}
+
+function guidanceItems({ state, current, target, pct, doneCount, projection, units }) {
+  const profile = state.onboardingProfile;
+  const onMedication = profile.usesWeightLossMedication && profile.medicationName !== 'none';
+  const remaining = Math.max(0, current - target);
+  const staleDays = latestLogAgeDays(state.weightLogs);
+  const injection = profile.injectionDay ? ` Your injection day is ${profile.injectionDay}.` : '';
+  const medName = profile.medicationOther || profile.medicationName;
+  const dose = formatDoseMg(profile.medicationDose);
+
+  const items = [];
+  if (remaining > 0 && pct >= 80) {
+    items.push({
+      title: 'Close range',
+      body: `${formatWeight(remaining, units)} to go. Keep the plan steady and let the final stretch be boring.`,
+    });
+  } else if (pct < 12) {
+    items.push({
+      title: 'Early phase',
+      body: 'The first job is reliable data: weigh in, hit the basics, and let the trend settle before judging the plan.',
+    });
+  } else {
+    items.push({
+      title: 'Current focus',
+      body: projection
+        ? 'Your timeline will move with your logs, your calorie target, and the plan you choose.'
+        : 'Log a few more weigh-ins and Reset can turn your trend into a clearer timeline.',
+    });
+  }
+
+  if (onMedication) {
+    items.push({
+      title: 'Medication-aware',
+      body: `${medName}${dose ? ` ${dose}` : ''}: smaller protein-led meals, fluids, and symptom notes are worth tracking.${injection}`,
+    });
+  } else if (doneCount < 2) {
+    items.push({
+      title: 'Minimum viable day',
+      body: 'Start with one walk, one protein anchor, and water. Then decide whether calories need tightening.',
+    });
+  } else {
+    items.push({
+      title: 'Today is moving',
+      body: `${doneCount}/4 basics are done. Finish the next easiest one instead of trying to perfect the day.`,
+    });
+  }
+
+  if (staleDays !== null && staleDays >= 7) {
+    items.push({
+      title: 'Fresh weigh-in',
+      body: `Last weight log was ${staleDays} days ago. A quick update will keep your projection honest.`,
+    });
+  } else {
+    items.push({
+      title: 'Trust the average',
+      body: 'One messy day does not decide the result. The weekly average is the signal.',
+    });
+  }
+
+  return items.slice(0, 3);
+}
+
 export default function Home({ state, todayDailyLog, onChangeTab }) {
+  const [showTrend, setShowTrend] = useState(false);
   const current = currentWeight(state);
   const start = Number(state.onboardingProfile.startWeightKg || current);
   const target = Number(state.onboardingProfile.goalWeightKg || state.healthPlan.targetWeightKg || 0);
@@ -29,12 +100,14 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
   const pct = Math.max(0, Math.min(100, (lost / totalToLose) * 100));
   const doneCount = ['movementDone', 'calorieTargetHit', 'proteinDone', 'hydrationDone'].filter((key) => todayDailyLog[key]).length;
   const weekly = weeklyChange(state.weightLogs);
-  const projected = estimateTargetDate(state.weightLogs, target);
-  const planProjected = estimatePlanGoalDate(state);
+  const projection = goalProjection(state);
   const name = state.profile.displayName || '';
   const bmiClass = bmiClassName(state.healthPlan.bmiCategory);
   const bmiStyle = bmiVisualStyle(state.healthPlan.bmi);
   const units = state.settings.preferredUnits;
+  const remaining = Math.max(0, Math.round((current - target) * 10) / 10);
+  const guidance = guidanceItems({ state, current, target, pct, doneCount, projection, units });
+  const timelineCopy = projection?.note || 'Keep logging and your projected timeline will appear here.';
 
   const todayNote = doneCount === 4 ? 'all done today' : doneCount === 0 ? 'not started yet' : 'in progress';
 
@@ -44,12 +117,41 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
         <div className="heroGreeting">{greeting(name)}</div>
         <div className="big weightHeroNumber">{formatWeight(current, units, 'not set')}</div>
         <p className="note">{lostCopy(lost, units)} Goal: {formatWeight(target, units, 'not set yet')}.</p>
-        <div className="track"><div className="fill" style={{ width: `${pct}%` }} /></div>
+        <button className="progressOpen" type="button" onClick={() => setShowTrend((value) => !value)} aria-expanded={showTrend}>
+          <span className="progressOpenTop">
+            <b>{formatWeight(remaining, units, 'Set a goal')} left</b>
+            <em>{Math.round(pct)}%</em>
+          </span>
+          <span className="track"><span className="fill" style={{ width: `${pct}%` }} /></span>
+        </button>
+        {showTrend ? (
+          <div className="trendPanel">
+            <div className="trendChart" aria-hidden="true">
+              <span className="trendLine" />
+              <i style={{ left: '5%', bottom: '19%' }}>{formatWeight(start, units, '')}</i>
+              <i style={{ left: '47%', bottom: `${Math.max(27, 78 - pct * 0.42)}%` }}>{formatWeight(current, units, '')}</i>
+              <i style={{ right: '0', bottom: '72%' }}>{formatWeight(target, units, '')}</i>
+            </div>
+            <p className="note">{timelineCopy}</p>
+          </div>
+        ) : null}
       </Card>
 
-      <div className="grid">
+      <div className="grid compactMetrics">
         <MetricCard label="Calories" value={state.settings.calorieTarget || 'not set'} note="your daily target" />
-        <MetricCard label="Today" value={`${doneCount}/4`} note={todayNote} />
+        <Card className="todayStatusCard">
+          <div className="label">Today</div>
+          <div className="todayStatusTop">
+            <div className="mid">{doneCount}/4</div>
+            <span>{todayNote}</span>
+          </div>
+          <div className="todayDots" aria-hidden="true">
+            {['movementDone', 'calorieTargetHit', 'proteinDone', 'hydrationDone'].map((key) => (
+              <i key={key} className={todayDailyLog[key] ? 'on' : ''} />
+            ))}
+          </div>
+          <button className="textButton" type="button" onClick={() => onChangeTab('today')}>Open Today</button>
+        </Card>
       </div>
 
       <Card className={`profileCard bmiFeature ${bmiClass}`} style={bmiStyle}>
@@ -68,27 +170,18 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
           note={weekly === null ? 'need 2 weeks of logs' : `7-day trend (${weightUnit(units)})`}
         />
         <MetricCard
-          label="Goal date"
-          value={projected || planProjected?.label || 'keep logging'}
-          note={projected ? 'at your current rate' : planProjected ? 'based on your plan' : 'need a few weigh-ins'}
+          label="Projected arrival"
+          value={projection?.label || 'keep logging'}
+          note={projection?.source === 'logs' ? 'from recent weigh-ins' : projection ? 'from your active plan' : 'need a few weigh-ins'}
         />
       </div>
 
-      {planProjected ? (
-        <Card>
-          <div className="label">Projected goal date</div>
-          <div className="mid">{planProjected.label}</div>
-          <p className="note">
-            Based on your current calorie target. Keep showing up and this date gets more accurate as your logs build.
-          </p>
-        </Card>
-      ) : null}
-
       <Card>
-        <div className="label">Keep it simple</div>
+        <div className="label">Your next reset</div>
         <div className="list">
-          <div className="item"><b>Your minimum today</b><span>Move a little, stay inside calories, get some protein in, drink enough water. That's the whole job.</span></div>
-          <div className="item"><b>Trust the average</b><span>One messy day won't undo progress. What you do most of the time is what actually moves the needle.</span></div>
+          {guidance.map((item) => (
+            <div className="item" key={item.title}><b>{item.title}</b><span>{item.body}</span></div>
+          ))}
         </div>
         <button className="main secondary" type="button" onClick={() => onChangeTab('today')}>Open today</button>
       </Card>
