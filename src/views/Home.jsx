@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Card from '../components/Card.jsx';
 import MetricCard from '../components/MetricCard.jsx';
 import { currentWeight } from '../lib/storage.js';
@@ -92,6 +92,8 @@ function guidanceItems({ state, current, target, pct, doneCount, projection, uni
 
 export default function Home({ state, todayDailyLog, onChangeTab }) {
   const [showTrend, setShowTrend] = useState(false);
+  const [trendClosing, setTrendClosing] = useState(false);
+  const closeTrendTimer = useRef(null);
   const current = currentWeight(state);
   const start = Number(state.onboardingProfile.startWeightKg || current);
   const target = Number(state.onboardingProfile.goalWeightKg || state.healthPlan.targetWeightKg || 0);
@@ -110,6 +112,24 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
   const timelineCopy = projection?.note || 'Keep logging and your projected timeline will appear here.';
 
   const todayNote = doneCount === 4 ? 'all done today' : doneCount === 0 ? 'not started yet' : 'in progress';
+  const currentMarkerBottom = Math.max(19, 72 - pct * 0.53);
+
+  useEffect(() => () => window.clearTimeout(closeTrendTimer.current), []);
+
+  function toggleTrend() {
+    window.clearTimeout(closeTrendTimer.current);
+    if (!showTrend || trendClosing) {
+      setShowTrend(true);
+      setTrendClosing(false);
+      return;
+    }
+
+    setTrendClosing(true);
+    closeTrendTimer.current = window.setTimeout(() => {
+      setShowTrend(false);
+      setTrendClosing(false);
+    }, 320);
+  }
 
   return (
     <div className="staggerStack">
@@ -117,20 +137,25 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
         <div className="heroGreeting">{greeting(name)}</div>
         <div className="big weightHeroNumber">{formatWeight(current, units, 'not set')}</div>
         <p className="note">{lostCopy(lost, units)} Goal: {formatWeight(target, units, 'not set yet')}.</p>
-        <button className="progressOpen" type="button" onClick={() => setShowTrend((value) => !value)} aria-expanded={showTrend}>
+        <button className="progressOpen" type="button" onClick={toggleTrend} aria-expanded={showTrend && !trendClosing}>
           <span className="progressOpenTop">
-            <b>{formatWeight(remaining, units, 'Set a goal')} left</b>
+            <span>
+              <b>{formatWeight(remaining, units, 'Set a goal')} left</b>
+              <small>{showTrend && !trendClosing ? 'Hide projected timeline' : 'View projected timeline'}</small>
+            </span>
             <em>{Math.round(pct)}%</em>
           </span>
           <span className="track"><span className="fill" style={{ width: `${pct}%` }} /></span>
         </button>
         {showTrend ? (
-          <div className="trendPanel">
+          <div className={`trendPanel ${trendClosing ? 'closing' : 'open'}`}>
             <div className="trendChart" aria-hidden="true">
-              <span className="trendLine" />
-              <i style={{ left: '5%', bottom: '19%' }}>{formatWeight(start, units, '')}</i>
-              <i style={{ left: '47%', bottom: `${Math.max(27, 78 - pct * 0.42)}%` }}>{formatWeight(current, units, '')}</i>
-              <i style={{ right: '0', bottom: '72%' }}>{formatWeight(target, units, '')}</i>
+              <svg className="trendLine" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+                <path d="M 8 22 C 29 24, 35 40, 48 48 S 74 72, 92 78" />
+              </svg>
+              <i style={{ left: '5%', bottom: '72%' }}>{formatWeight(start, units, '')}</i>
+              <i style={{ left: '47%', bottom: `${currentMarkerBottom}%` }}>{formatWeight(current, units, '')}</i>
+              <i style={{ right: '0', bottom: '19%' }}>{formatWeight(target, units, '')}</i>
             </div>
             <p className="note">{timelineCopy}</p>
           </div>
