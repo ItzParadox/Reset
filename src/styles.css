@@ -449,9 +449,10 @@ button.main:active, .choice:active { opacity: .72; }
 .progressOpenTop em { flex: 0 0 auto; color: var(--yes); font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-style: normal; font-size: 13px; padding: 6px 8px; border: 1px solid rgba(216,255,90,.22); border-radius: 999px; background: rgba(216,255,90,.07); }
 .progressOpen .track { display: block; margin-top: 9px; }
 .progressOpen .fill { display: block; animation: progressSettle .7s cubic-bezier(.2,1,.25,1) both; }
-.trendPanel { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.07); transform-origin: top center; }
-.trendPanel.open { animation: trendPanelIn .36s cubic-bezier(.2,1,.25,1) both; }
-.trendPanel.closing { animation: trendPanelOut .32s cubic-bezier(.3,0,.2,1) both; pointer-events: none; overflow: hidden; }
+.trendPanel { display: grid; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.07); transform-origin: top center; overflow: hidden; }
+.trendPanelInner { min-height: 0; }
+.trendPanel.open { animation: trendPanelIn .3s cubic-bezier(.2,1,.25,1) both; }
+.trendPanel.closing { animation: trendPanelOut .28s cubic-bezier(.3,0,.2,1) both; pointer-events: none; }
 .trendChart { position: relative; height: 112px; margin: 4px 0 2px; overflow: hidden; border-radius: 16px; background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)); border: 1px solid rgba(255,255,255,.06); }
 .trendChart::before { content: ''; position: absolute; inset: 18px 0 24px; background-image: linear-gradient(rgba(255,255,255,.055) 1px, transparent 1px); background-size: 100% 28px; }
 .trendLine { position: absolute; inset: 14px 8px 14px; width: calc(100% - 16px); height: calc(100% - 28px); overflow: visible; }
@@ -625,8 +626,8 @@ button.main:active, .choice:active { opacity: .72; }
 @keyframes profileStatsIn { from { opacity: 0; transform: translateX(var(--profile-slide-from, 0)) translateY(5px); filter: blur(1.5px); } to { opacity: 1; transform: translateX(0) translateY(0); filter: blur(0); } }
 @keyframes profileStatsOut { from { opacity: 1; transform: translateX(0) translateY(0); filter: blur(0); } to { opacity: 0; transform: translateX(var(--profile-slide-to, 0)) translateY(-4px); filter: blur(1.5px); } }
 @keyframes progressSettle { from { transform: scaleX(.82); transform-origin: left; } to { transform: scaleX(1); transform-origin: left; } }
-@keyframes trendPanelIn { from { opacity: 0; transform: translateY(-7px) scaleY(.96); filter: blur(1.5px); } to { opacity: 1; transform: translateY(0) scaleY(1); filter: blur(0); } }
-@keyframes trendPanelOut { from { opacity: 1; transform: translateY(0) scaleY(1); filter: blur(0); max-height: 180px; } to { opacity: 0; transform: translateY(-7px) scaleY(.96); filter: blur(1.5px); max-height: 0; } }
+@keyframes trendPanelIn { from { grid-template-rows: 0fr; opacity: 0; transform: translateY(-5px); } to { grid-template-rows: 1fr; opacity: 1; transform: translateY(0); } }
+@keyframes trendPanelOut { from { grid-template-rows: 1fr; opacity: 1; transform: translateY(0); } to { grid-template-rows: 0fr; opacity: 0; transform: translateY(-5px); } }
 @keyframes trendDraw { from { stroke-dasharray: 160; stroke-dashoffset: 160; opacity: .35; } to { stroke-dasharray: 160; stroke-dashoffset: 0; opacity: 1; } }
 
 /* Setup BMI layout carried over from TAKE FROM THIS baseline */

@@ -128,7 +128,7 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
     closeTrendTimer.current = window.setTimeout(() => {
       setShowTrend(false);
       setTrendClosing(false);
-    }, 320);
+    }, 280);
   }
 
   return (
@@ -149,15 +149,17 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
         </button>
         {showTrend ? (
           <div className={`trendPanel ${trendClosing ? 'closing' : 'open'}`}>
-            <div className="trendChart" aria-hidden="true">
-              <svg className="trendLine" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
-                <path d="M 8 22 C 29 24, 35 40, 48 48 S 74 72, 92 78" />
-              </svg>
-              <i style={{ left: '5%', bottom: '72%' }}>{formatWeight(start, units, '')}</i>
-              <i style={{ left: '47%', bottom: `${currentMarkerBottom}%` }}>{formatWeight(current, units, '')}</i>
-              <i style={{ right: '0', bottom: '19%' }}>{formatWeight(target, units, '')}</i>
+            <div className="trendPanelInner">
+              <div className="trendChart" aria-hidden="true">
+                <svg className="trendLine" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+                  <path d="M 8 22 C 29 24, 35 40, 48 48 S 74 72, 92 78" />
+                </svg>
+                <i style={{ left: '5%', bottom: '72%' }}>{formatWeight(start, units, '')}</i>
+                <i style={{ left: '47%', bottom: `${currentMarkerBottom}%` }}>{formatWeight(current, units, '')}</i>
+                <i style={{ right: '0', bottom: '19%' }}>{formatWeight(target, units, '')}</i>
+              </div>
+              <p className="note">{timelineCopy}</p>
             </div>
-            <p className="note">{timelineCopy}</p>
           </div>
         ) : null}
       </Card>
