@@ -16,6 +16,7 @@ import {
   cloneDefaultState,
   completeOnboardingState,
   createDailyLog,
+  createFoodEntry,
   createMedicationLog,
   createWeightLog,
   loadState,
@@ -231,6 +232,34 @@ function AppContent() {
     }, { table: 'daily_logs', action: 'upsert', payloadKey: todayKey });
   }
 
+  function saveFoodEntry(input) {
+    const entry = createFoodEntry(input);
+    if (!entry.calories) return;
+    commit((draft) => {
+      const log = draft.dailyLogs[todayKey] || createDailyLog(todayKey);
+      log.foodEntries = [entry, ...(Array.isArray(log.foodEntries) ? log.foodEntries : [])].slice(0, 80);
+      log.caloriesConsumed = sumFoodCalories(log.foodEntries);
+      const target = Number(draft.settings.calorieTarget || draft.healthPlan.calorieTarget || 0);
+      log.calorieTargetHit = target > 0 && log.caloriesConsumed > 0 && log.caloriesConsumed <= target;
+      log.updatedAt = new Date().toISOString();
+      draft.dailyLogs[todayKey] = log;
+      return draft;
+    }, { table: 'daily_logs', action: 'upsert', payloadKey: todayKey });
+  }
+
+  function deleteFoodEntry(entryId) {
+    commit((draft) => {
+      const log = draft.dailyLogs[todayKey] || createDailyLog(todayKey);
+      log.foodEntries = (Array.isArray(log.foodEntries) ? log.foodEntries : []).filter((entry) => entry.id !== entryId);
+      log.caloriesConsumed = sumFoodCalories(log.foodEntries);
+      const target = Number(draft.settings.calorieTarget || draft.healthPlan.calorieTarget || 0);
+      log.calorieTargetHit = target > 0 && log.caloriesConsumed > 0 && log.caloriesConsumed <= target;
+      log.updatedAt = new Date().toISOString();
+      draft.dailyLogs[todayKey] = log;
+      return draft;
+    }, { table: 'daily_logs', action: 'upsert', payloadKey: todayKey });
+  }
+
   function addWater(amountMl) {
     const cleanAmount = Math.min(Math.max(Number.parseInt(amountMl, 10) || 250, 50), 2000);
     commit((draft) => {
@@ -392,7 +421,7 @@ function AppContent() {
     ),
     water: <Water state={state} dailyLog={todayDailyLog} onAddWater={addWater} onResetWater={resetWater} onSaveWaterStep={saveWaterStep} onSaveHydrationTarget={saveHydrationTarget} />,
     weight: <Weight state={state} logs={state.weightLogs} onSaveWeight={saveWeight} />,
-    food: <Food state={state} onUpdatePlan={updatePlan} />,
+    food: <Food state={state} dailyLog={todayDailyLog} onSaveFoodEntry={saveFoodEntry} onDeleteFoodEntry={deleteFoodEntry} />,
     meds: <Meds state={state} medicationLog={currentMedicationLog} onSaveMedicationLog={saveMedicationLog} />,
     settings: (
       <Settings
@@ -452,4 +481,8 @@ function deficitPercentageFor(deficitLevel) {
   if (deficitLevel === 'aggressive') return 0.25;
   if (deficitLevel === 'extreme') return 0.35;
   return 0.15;
+}
+
+function sumFoodCalories(entries) {
+  return (Array.isArray(entries) ? entries : []).reduce((total, entry) => total + (Number.parseInt(entry.calories, 10) || 0), 0);
 }

@@ -209,6 +209,10 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
   const units = state.settings.preferredUnits;
   const remaining = Math.max(0, Math.round((current - target) * 10) / 10);
   const guidance = guidanceItems({ state, current, target, pct, doneCount, projection, units });
+  const calorieTarget = Number(state.settings.calorieTarget || state.healthPlan.calorieTarget || 0);
+  const caloriesConsumed = (Array.isArray(todayDailyLog.foodEntries) ? todayDailyLog.foodEntries : [])
+    .reduce((total, entry) => total + (Number.parseInt(entry.calories, 10) || 0), 0);
+  const caloriePct = calorieTarget ? Math.min(100, Math.round((caloriesConsumed / calorieTarget) * 100)) : 0;
 
   const todayNote = doneCount === 4 ? 'all done today' : doneCount === 0 ? 'not started yet' : 'in progress';
 
@@ -232,7 +236,15 @@ export default function Home({ state, todayDailyLog, onChangeTab }) {
       </Card>
 
       <div className="grid compactMetrics">
-        <MetricCard label="Calories" value={state.settings.calorieTarget || 'not set'} note="your daily target" />
+        <Card className="homeCalorieCard">
+          <div className="label">Calories</div>
+          <div className="homeCalorieTop">
+            <div className="mid">{caloriesConsumed}</div>
+            <span>{calorieTarget || 'not set'} target</span>
+          </div>
+          <div className="track calorieTrack" aria-hidden="true"><span className="fill" style={{ width: `${caloriePct}%` }} /></div>
+          <button className="textButton" type="button" onClick={() => onChangeTab('food')}>Open Calories</button>
+        </Card>
         <Card className="todayStatusCard">
           <div className="label">Today</div>
           <div className="todayStatusTop">

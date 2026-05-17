@@ -14,6 +14,13 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
   const hydrationLabel = hydration
     ? `${waterMl} / ${hydration}ml`
     : 'stay hydrated';
+  const calorieTarget = Number(state.settings.calorieTarget || state.healthPlan.calorieTarget || 0);
+  const caloriesConsumed = Array.isArray(dailyLog.foodEntries)
+    ? dailyLog.foodEntries.reduce((total, entry) => total + (Number.parseInt(entry.calories, 10) || 0), 0)
+    : Number(dailyLog.caloriesConsumed || 0);
+  const calorieLabel = calorieTarget
+    ? `${caloriesConsumed} / ${calorieTarget} kcal`
+    : `${caloriesConsumed} kcal logged`;
 
   const { remainingSeconds, durationSeconds } = state.ui.timer;
   const hasTimerGoal = Number(durationSeconds) > 0;
@@ -64,7 +71,7 @@ export default function Today({ state, dailyLog, timerText, timerRunning, onTogg
             <Tick checked={dailyLog.movementDone} label="Toggle movement done" onToggle={() => onToggleDaily('movementDone')} />
           </div>
           <div className="row">
-            <span className="rowText">Stayed within calories</span>
+            <span className="rowText">Calories - {calorieLabel}</span>
             <Tick checked={dailyLog.calorieTargetHit} label="Toggle calorie target followed" onToggle={() => onToggleDaily('calorieTargetHit')} />
           </div>
           <div className="row">

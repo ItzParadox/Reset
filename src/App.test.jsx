@@ -122,7 +122,7 @@ describe('Reset app integration', () => {
 
     expect(await screen.findByText(/Afternoon, Ada\.|Morning, Ada\.|Evening, Ada\./)).toBeInTheDocument();
     expect(screen.getByText('100.0kg')).toBeInTheDocument();
-    expect(screen.getByText('1989')).toBeInTheDocument();
+    expect(screen.getByText('1989 target')).toBeInTheDocument();
 
     const stored = JSON.parse(localStorage.getItem('reset_state_v7'));
     expect(stored.profile.onboardingComplete).toBe(true);
@@ -304,49 +304,108 @@ describe('Reset app integration', () => {
     expect(screen.queryByText(/daily targets/i)).not.toBeInTheDocument();
   });
 
-  it('returns to the original Moderate calories after switching plans from onboarding data', async () => {
+  it('logs manual calories against the calculated daily target', async () => {
     const user = userEvent.setup();
+    localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
+      settings: { preferredUnits: 'metric', calorieTarget: 2019 },
+      healthPlan: {
+        bmrCalories: 1979,
+        maintenanceCalories: 2375,
+        selectedDeficitLevel: 'moderate',
+        deficitPercentage: 0.15,
+        calorieTarget: 2019,
+      },
+      ui: { activeTab: 'food' },
+    })));
 
     render(<App />);
-    await finishMetricOnboarding(user);
-    await user.click(screen.getByRole('button', { name: /plan/i }));
+    await screen.findByText('Calories today', {}, { timeout: 2500 });
 
-    const originalModerate = JSON.parse(localStorage.getItem('reset_state_v7')).settings.calorieTarget;
-    expect(originalModerate).toBe(1989);
+    await user.type(screen.getByPlaceholderText(/lunch/i), 'Chicken salad');
+    await user.type(screen.getByPlaceholderText(/520/i), '520');
+    await user.click(screen.getByRole('button', { name: /add calories/i }));
 
-    await switchPlan(user, 'Aggressive');
-    expect(JSON.parse(localStorage.getItem('reset_state_v7')).settings.calorieTarget).toBe(1755);
-
-    await switchPlan(user, 'Extreme');
-    expect(JSON.parse(localStorage.getItem('reset_state_v7')).settings.calorieTarget).toBe(1521);
-
-    await switchPlan(user, 'Moderate');
-    const restored = JSON.parse(localStorage.getItem('reset_state_v7'));
-    expect(restored.settings.calorieTarget).toBe(originalModerate);
-    expect(screen.getAllByText(String(originalModerate)).length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('heals the exported compounded calorie plan when switching plans', async () => {
-    const user = userEvent.setup();
-    localStorage.setItem('reset_state_v7', JSON.stringify(exportedBugState));
-
-    render(<App />);
-    await screen.findByRole('button', { name: /moderate/i }, { timeout: 2500 });
-
-    expect(screen.getByText('19415')).toBeInTheDocument();
-    await switchPlan(user, 'Moderate');
+    await screen.findByText('Chicken salad');
+    expect(screen.getByText('520 kcal')).toBeInTheDocument();
+    expect(screen.getByText('1499')).toBeInTheDocument();
 
     const stored = JSON.parse(localStorage.getItem('reset_state_v7'));
-    expect(stored.healthPlan.maintenanceCalories).toBe(2375);
-    expect(stored.healthPlan.deficitPercentage).toBe(0.15);
-    expect(stored.settings.calorieTarget).toBe(2019);
-    expect(screen.getAllByText('2019').length).toBeGreaterThanOrEqual(2);
-    expect(screen.queryByText(/23581|19415|25886/)).not.toBeInTheDocument();
-    expectNoAbsurdCalorieText();
+    const dailyLog = Object.values(stored.dailyLogs)[0];
+    expect(dailyLog.caloriesConsumed).toBe(520);
+    expect(dailyLog.calorieTargetHit).toBe(true);
+    expect(dailyLog.foodEntries[0]).toMatchObject({
+      name: 'Chicken salad',
+      calories: 520,
+      source: 'manual',
+    });
+
+    await user.click(screen.getByRole('button', { name: /home/i }));
+    expect(await screen.findByText('2019 target')).toBeInTheDocument();
+    expect(screen.getAllByText('520').length).toBeGreaterThanOrEqual(1);
+
+    await user.click(screen.getByRole('button', { name: /^today$/i }));
+    expect(await screen.findByText('Calories - 520 / 2019 kcal')).toBeInTheDocument();
   });
 
-  it('keeps displayed calories realistic after repeated plan switching', async () => {
+  it('opens, clears, and closes the food search modal', async () => {
     const user = userEvent.setup();
+    localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
+      settings: { preferredUnits: 'metric', calorieTarget: 2019 },
+      healthPlan: {
+        bmrCalories: 1979,
+        maintenanceCalories: 2375,
+        selectedDeficitLevel: 'moderate',
+        deficitPercentage: 0.15,
+        calorieTarget: 2019,
+      },
+      ui: { activeTab: 'food' },
+    })));
+
+    render(<App />);
+    await screen.findByText('Calories today', {}, { timeout: 2500 });
+    await user.click(screen.getByRole('button', { name: /^search$/i }));
+
+    expect(await screen.findByRole('dialog', { name: /find calories fast/i })).toBeInTheDocument();
+    const searchInput = screen.getByPlaceholderText(/Greek yoghurt/i);
+    await user.type(searchInput, 'oats');
+    expect(searchInput).toHaveValue('oats');
+    await user.click(screen.getByRole('button', { name: /^clear$/i }));
+    expect(searchInput).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: /close food search/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /find calories fast/i })).not.toBeInTheDocument());
+  });
+
+  it('shows Calories but not Meds for users without medication enabled', async () => {
+    localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
+      onboardingProfile: {
+        usesWeightLossMedication: false,
+        medicationName: 'none',
+      },
+      settings: { preferredUnits: 'metric', calorieTarget: 2019 },
+      healthPlan: {
+        bmrCalories: 1979,
+        maintenanceCalories: 2375,
+        selectedDeficitLevel: 'moderate',
+        deficitPercentage: 0.15,
+        calorieTarget: 2019,
+      },
+      ui: { activeTab: 'home' },
+    })));
+
+    render(<App />);
+    expect(await screen.findByRole('button', { name: /^calories$/i }, { timeout: 2500 })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /meds/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button').slice(-6).map((button) => button.textContent)).toEqual([
+      'Home',
+      'Today',
+      'Weight',
+      'Calories',
+      'Water',
+      'User',
+    ]);
+  });
+
+  it('keeps displayed calories realistic on the calorie tracker', async () => {
     localStorage.setItem('reset_state_v7', JSON.stringify({
       ...exportedBugState,
       healthPlan: {
@@ -360,17 +419,12 @@ describe('Reset app integration', () => {
     }));
 
     render(<App />);
-    await screen.findByRole('button', { name: /aggressive/i }, { timeout: 2500 });
+    await screen.findByText('Calories today', {}, { timeout: 2500 });
 
-    const sequence = Array.from({ length: 30 }, (_, index) => ['Aggressive', 'Extreme', 'Moderate'][index % 3]);
-    for (const label of sequence) {
-      await switchPlan(user, label);
-      const stored = JSON.parse(localStorage.getItem('reset_state_v7'));
-      expect(stored.healthPlan.maintenanceCalories).toBe(2375);
-      expect(stored.settings.calorieTarget).toBeGreaterThan(0);
-      expect(stored.settings.calorieTarget).toBeLessThan(5000);
-      expect(Number.isFinite(stored.settings.calorieTarget)).toBe(true);
-      expectNoAbsurdCalorieText();
-    }
+    const stored = JSON.parse(localStorage.getItem('reset_state_v7'));
+    expect(stored.healthPlan.maintenanceCalories).toBe(2375);
+    expect(stored.settings.calorieTarget).toBe(2019);
+    expect(stored.settings.calorieTarget).toBeLessThan(5000);
+    expectNoAbsurdCalorieText();
   });
 });

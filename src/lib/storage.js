@@ -201,8 +201,24 @@ export function createDailyLog(logDate = localDateKey()) {
     proteinDone: false,
     hydrationDone: false,
     waterMl: 0,
+    caloriesConsumed: 0,
+    foodEntries: [],
     notes: '',
     updatedAt: new Date().toISOString(),
+  };
+}
+
+export function createFoodEntry(input = {}) {
+  const calories = Math.min(Math.max(Number.parseInt(input.calories, 10) || 0, 0), 10000);
+  const amount = cleanNullableNumber(input.amount);
+  return {
+    id: input.id || cryptoSafeId('food'),
+    name: typeof input.name === 'string' && input.name.trim() ? input.name.trim().slice(0, 80) : 'Food',
+    calories,
+    amount,
+    unit: typeof input.unit === 'string' && input.unit.trim() ? input.unit.trim().slice(0, 16) : 'serving',
+    source: ['manual', 'openfoodfacts'].includes(input.source) ? input.source : 'manual',
+    loggedAt: input.loggedAt || new Date().toISOString(),
   };
 }
 
@@ -395,9 +411,15 @@ function normaliseDailyLogs(logs) {
       proteinDone: value.proteinDone === true || value.protein === true,
       hydrationDone: value.hydrationDone === true || value.drinks === true,
       waterMl: Math.min(Math.max(Number.parseInt(value.waterMl ?? value.hydrationMl ?? 0, 10) || 0, 0), 20000),
+      foodEntries: normaliseFoodEntries(value.foodEntries || []),
+      caloriesConsumed: 0,
       notes: typeof value.notes === 'string' ? value.notes : '',
       updatedAt: value.updatedAt || new Date().toISOString(),
     };
+    result[key].caloriesConsumed = sumFoodCalories(result[key].foodEntries, value.caloriesConsumed);
+    if (result[key].foodEntries.length && value.calorieTargetHit !== true && value.calories !== true) {
+      result[key].calorieTargetHit = false;
+    }
   });
   return result;
 }
@@ -423,6 +445,23 @@ function normaliseMedicationLogs(logs) {
     };
   });
   return result;
+}
+
+function normaliseFoodEntries(entries) {
+  return Array.isArray(entries)
+    ? entries
+        .map((entry) => createFoodEntry(entry))
+        .filter((entry) => entry.calories > 0)
+        .sort((a, b) => String(b.loggedAt).localeCompare(String(a.loggedAt)))
+        .slice(0, 80)
+    : [];
+}
+
+function sumFoodCalories(entries, fallback = 0) {
+  if (!Array.isArray(entries) || !entries.length) {
+    return Math.min(Math.max(Number.parseInt(fallback, 10) || 0, 0), 100000);
+  }
+  return entries.reduce((total, entry) => total + (Number.parseInt(entry.calories, 10) || 0), 0);
 }
 
 function dedupePendingMutations(items) {

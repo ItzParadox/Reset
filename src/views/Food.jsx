@@ -1,101 +1,394 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Card from '../components/Card.jsx';
-import { DEFICIT_OPTIONS, calculateMaintenance, calculatePlanFeedback, estimatePlanGoalDate, mealStructureForProfile } from '../lib/calculations.js';
 
-function feedbackCopy(feedback) {
-  if (!feedback) return null;
-  if (feedback.status === 'faster') return 'Your logged trend is currently ahead of the formula estimate, so the projection is being nudged faster.';
-  if (feedback.status === 'slower') return 'Your logged trend is moving slower than the formula estimate, so the projection is being nudged more cautiously.';
-  if (feedback.status === 'holding') return 'Your recent logs are roughly flat, so Reset is treating the projection with extra caution.';
-  if (feedback.status === 'gaining') return 'Your recent logs are trending up, so Reset is not treating the formula target as a guaranteed deficit.';
-  return 'Your logged trend is close to the formula estimate, so the projection only needs a small adjustment.';
+const SEARCH_LIMIT = 8;
+
+function progressClass(consumed, target) {
+  if (!target || !consumed) return 'progressNeutral';
+  if (consumed <= target) return 'progressGood';
+  return 'progressBad';
 }
 
-export default function Food({ state, onUpdatePlan }) {
-  const selected = state.healthPlan.selectedDeficitLevel;
-  const structure = mealStructureForProfile(state);
-  const planMaintenance = calculateMaintenance(state.onboardingProfile) || state.healthPlan.maintenanceCalories;
-  const planFeedback = calculatePlanFeedback(state, {
-    maintenance: planMaintenance,
-    calories: state.settings.calorieTarget || state.healthPlan.calorieTarget,
-  });
-  const planGoalDate = estimatePlanGoalDate({
-    ...state,
-    healthPlan: {
-      ...state.healthPlan,
-      maintenanceCalories: planMaintenance,
-    },
-  });
+function foodAmountLabel(entry) {
+  if (!entry.amount) return entry.unit || 'serving';
+  return `${entry.amount}${entry.unit === 'g' ? 'g' : ` ${entry.unit || 'serving'}`}`;
+}
+
+function calorieTone(consumed, target) {
+  if (!target) return 'Set your profile to unlock a target.';
+  if (!consumed) return 'Start with the easiest thing to log.';
+  if (consumed <= target) return 'You are inside today\'s target.';
+  return 'You are over target. Keep logging honestly and use the next meal to steady the day.';
+}
+
+async function searchFoods(query, signal) {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  try {
+    const response = await fetch(`/api/food-search?q=${encodeURIComponent(trimmed)}`, { signal });
+    if (!response.ok) throw new Error('Food search failed.');
+    const data = await response.json();
+    return Array.isArray(data.items) ? data.items.slice(0, SEARCH_LIMIT) : [];
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    return searchOpenFoodFactsDirect(trimmed, signal);
+  }
+}
+
+async function searchOpenFoodFactsDirect(query, signal) {
+  const url = new URL('https://world.openfoodfacts.org/cgi/search.pl');
+  url.searchParams.set('search_terms', query);
+  url.searchParams.set('search_simple', '1');
+  url.searchParams.set('action', 'process');
+  url.searchParams.set('json', '1');
+  url.searchParams.set('page_size', '8');
+  url.searchParams.set('fields', 'code,product_name,brands,nutriments');
+
+  const response = await fetch(url, { signal, headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new Error('Food search failed.');
+  const data = await response.json();
+  return (Array.isArray(data.products) ? data.products : [])
+    .map((product) => {
+      const caloriesPer100g = Math.round(Number(product?.nutriments?.['energy-kcal_100g']));
+      const name = String(product?.product_name || '').trim();
+      if (!name || !Number.isFinite(caloriesPer100g) || caloriesPer100g <= 0) return null;
+      return {
+        id: String(product.code || `${name}-${caloriesPer100g}`).slice(0, 80),
+        name: name.slice(0, 80),
+        brand: String(product.brands || '').split(',')[0].trim().slice(0, 40),
+        caloriesPer100g: Math.min(caloriesPer100g, 1200),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, SEARCH_LIMIT);
+}
+
+export default function Food({ state, dailyLog, onSaveFoodEntry, onDeleteFoodEntry }) {
+  const targetCalories = Number(state.settings.calorieTarget || state.healthPlan.calorieTarget || 0);
+  const entries = Array.isArray(dailyLog.foodEntries) ? dailyLog.foodEntries : [];
+  const consumed = entries.reduce((total, entry) => total + (Number.parseInt(entry.calories, 10) || 0), 0);
+  const remaining = targetCalories ? targetCalories - consumed : null;
+  const progress = targetCalories ? Math.min(100, Math.round((consumed / targetCalories) * 100)) : 0;
+  const onMedication = state.onboardingProfile.usesWeightLossMedication && state.onboardingProfile.medicationName !== 'none';
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchClosing, setSearchClosing] = useState(false);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [searchStatus, setSearchStatus] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [manualName, setManualName] = useState('');
+  const [manualCalories, setManualCalories] = useState('');
+  const [manualError, setManualError] = useState('');
+  const [toast, setToast] = useState('');
+  const abortRef = useRef(null);
+  const closeTimerRef = useRef(null);
+  const toastTimerRef = useRef(null);
+  const resultMap = useMemo(() => new Map(results.map((item) => [item.id, item])), [results]);
+
+  useEffect(() => () => {
+    abortRef.current?.abort();
+    window.clearTimeout(closeTimerRef.current);
+    window.clearTimeout(toastTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (!searchOpen) return undefined;
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const previous = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+    };
+
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') requestCloseSearch();
+    };
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      body.style.overflow = previous.overflow;
+      body.style.position = previous.position;
+      body.style.top = previous.top;
+      body.style.left = previous.left;
+      body.style.right = previous.right;
+      body.style.width = previous.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [searchOpen]);
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setSearchStatus('Type a food name first.');
+      setResults([]);
+      return;
+    }
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 6500);
+    abortRef.current = controller;
+    setSearching(true);
+    setSearchStatus('');
+
+    try {
+      const items = await searchFoods(trimmed, controller.signal);
+      setResults(items);
+      setSearchStatus(items.length ? '' : 'No useful matches. Quick add still works.');
+    } catch {
+      setResults([]);
+      setSearchStatus('Search timed out. Quick add still works.');
+    } finally {
+      window.clearTimeout(timeout);
+      setSearching(false);
+    }
+  }
+
+  function clearSearch() {
+    abortRef.current?.abort();
+    setQuery('');
+    setResults([]);
+    setSearchStatus('');
+    setSearching(false);
+  }
+
+  function openSearch() {
+    setSearchOpen(true);
+    setSearchClosing(false);
+  }
+
+  function requestCloseSearch() {
+    if (searchClosing) return;
+    abortRef.current?.abort();
+    setSearchClosing(true);
+    closeTimerRef.current = window.setTimeout(() => {
+      clearSearch();
+      setSearchOpen(false);
+      setSearchClosing(false);
+    }, 240);
+  }
+
+  function showToast(message) {
+    window.clearTimeout(toastTimerRef.current);
+    setToast(message);
+    toastTimerRef.current = window.setTimeout(() => setToast(''), 1800);
+  }
+
+  function closeSearchNow() {
+    clearSearch();
+    setSearchOpen(false);
+    setSearchClosing(false);
+  }
+
+  function addSearchResult(id) {
+    const item = resultMap.get(id);
+    if (!item) return;
+    onSaveFoodEntry({
+      name: item.name,
+      calories: item.caloriesPer100g,
+      amount: 100,
+      unit: 'g',
+      source: 'openfoodfacts',
+    });
+    closeSearchNow();
+    showToast(`${item.name} added`);
+  }
+
+  function addManualEntry(event) {
+    event.preventDefault();
+    const calories = Number.parseInt(manualCalories, 10);
+    if (!manualName.trim()) {
+      setManualError('Add a food name.');
+      return;
+    }
+    if (!Number.isFinite(calories) || calories <= 0 || calories > 10000) {
+      setManualError('Use calories between 1 and 10000.');
+      return;
+    }
+    onSaveFoodEntry({
+      name: manualName,
+      calories,
+      amount: 1,
+      unit: 'serving',
+      source: 'manual',
+    });
+    setManualName('');
+    setManualCalories('');
+    setManualError('');
+    showToast('Calories added');
+  }
 
   return (
     <div className="staggerStack">
-      <Card className="heroCard">
-        <div className="label">Your calorie target</div>
-        <div className="big">{state.settings.calorieTarget || 'calculating'}</div>
-        <p className="note">
-          Estimated maintenance is {planMaintenance || 'calculating'} kcal.
-          You're running a {Math.round((state.healthPlan.deficitPercentage || 0) * 100)}% deficit — enough to move the scale without flooring your energy.
-        </p>
-        {planFeedback ? (
-          <p className="note strong">{feedbackCopy(planFeedback)}</p>
-        ) : (
-          <p className="note">After about four weeks of weight logs, Reset will compare the estimate with your actual trend.</p>
-        )}
-      </Card>
-
-      <Card>
-        <div className="label">Change the pace</div>
-        <div className="choiceList">
-          {Object.entries(DEFICIT_OPTIONS).map(([key, option]) => {
-            const target = planMaintenance
-              ? Math.round(planMaintenance * (1 - option.percentage))
-              : null;
-            return (
-              <button
-                key={key}
-                type="button"
-                className={selected === key ? 'choice planChoice on' : 'choice planChoice'}
-                onClick={() => onUpdatePlan(key, key !== 'extreme' ? false : state.healthPlan.warningAcknowledged)}
-              >
-                <div className="planChoiceTop">
-                  <span className="planChoiceName">{option.label}</span>
-                  <b className="planChoiceCalories">{target || 'not set'} <em>kcal/day</em></b>
-                </div>
-                <span className="planChoiceMeta">{Math.round(option.percentage * 100)}% deficit · {option.detail}</span>
-                {option.warning && selected !== key ? <span className="cautionText">{option.warning}</span> : null}
-              </button>
-            );
-          })}
+      <Card className={`heroCard calorieHero ${progressClass(consumed, targetCalories)}`}>
+        <div className="calorieHeroTop">
+          <div>
+            <div className="label">Calories today</div>
+            <div className="big">{remaining === null ? '-' : Math.max(0, remaining)}</div>
+            <p className="note">{remaining !== null && remaining < 0 ? `${Math.abs(remaining)} kcal over` : 'kcal left'}</p>
+          </div>
+          <div className="calorieRing" style={{ '--calorie-progress': `${progress}%` }}>
+            <span>{progress}%</span>
+          </div>
         </div>
-        {selected === 'extreme' && !state.healthPlan.warningAcknowledged ? (
-          <button className="main secondary" type="button" onClick={() => onUpdatePlan('extreme', true)}>Acknowledge clinical caution</button>
-        ) : null}
-        {selected === 'extreme' && state.healthPlan.warningAcknowledged ? (
-          <p className="note strong">Extreme target active. Keep a close eye on how you feel day to day.</p>
-        ) : null}
+        <div className="calorieBudgetLine">
+          <span><b>{consumed}</b> logged</span>
+          <span><b>{targetCalories || '-'}</b> target</span>
+        </div>
+        <div className="track calorieTrack" aria-hidden="true"><span className="fill" style={{ width: `${progress}%` }} /></div>
+        <p className="note strong">{calorieTone(consumed, targetCalories)}</p>
       </Card>
 
-      {planGoalDate ? (
-        <Card>
-          <div className="label">Projected goal date</div>
-          <div className="mid">{planGoalDate.label}</div>
-          <p className="note">
-            Based on your current target{planGoalDate.feedback ? ' and recent trend' : ''}, roughly {planGoalDate.weeklyLossKg}kg per week.
-            Treat it as a compass, not a deadline.
-          </p>
-        </Card>
+      {onMedication ? (
+        <div className="calorieNudge" role="note">
+          Smaller meals spread across the day may sit better while you are on medication.
+        </div>
       ) : null}
 
       <Card>
-        <div className="label">How to eat around this</div>
-        <div className="list">
-          {structure.map((item) => (
-            <div className="item" key={item.title}>
-              <b>{item.title}</b>
-              <span>{item.body}</span>
-            </div>
-          ))}
+        <div className="cardTitleRow compactTitleRow">
+          <div>
+            <div className="label">Quick add</div>
+            <p className="note tightNote">Best for meals you already know.</p>
+          </div>
+          <button className="clearSetupButton searchLaunchButton" type="button" onClick={openSearch}>Search</button>
         </div>
+        <form className="manualFoodForm calorieQuickAdd" onSubmit={addManualEntry}>
+          <label>
+            Food
+            <input value={manualName} onChange={(event) => setManualName(event.target.value)} placeholder="e.g. lunch" />
+          </label>
+          <label>
+            Calories <span className="unitSuffix">kcal</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min="1"
+              max="10000"
+              value={manualCalories}
+              onChange={(event) => {
+                setManualError('');
+                setManualCalories(event.target.value);
+              }}
+              placeholder="520"
+            />
+          </label>
+          <button className="main" type="submit">Add calories</button>
+        </form>
+        {manualError ? <p className="note warn">{manualError}</p> : null}
       </Card>
+
+      <Card>
+        <div className="cardTitleRow compactTitleRow">
+          <div className="label">Today&apos;s diary</div>
+          <span className="statusPill">{entries.length} items</span>
+        </div>
+        {entries.length ? (
+          <div className="history foodLog">
+            {entries.map((entry) => (
+              <div className="historyRow tall foodLogRow" key={entry.id}>
+                <span><b>{entry.name}</b> {foodAmountLabel(entry)}</span>
+                <span>{entry.calories} kcal</span>
+                <button type="button" onClick={() => onDeleteFoodEntry(entry.id)}>Remove</button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="emptyDiary">
+            <b>No food logged yet</b>
+            <span>Add a meal, snack, or rough estimate. The useful part is the running total.</span>
+          </div>
+        )}
+      </Card>
+      {searchOpen ? createPortal((
+        <div className={`foodSearchBackdrop ${searchClosing ? 'closing' : ''}`} role="dialog" aria-modal="true" aria-labelledby="food-search-title" onClick={requestCloseSearch}>
+          <div className={`foodSearchSheet ${searchClosing ? 'closing' : ''}`} onClick={(event) => event.stopPropagation()}>
+            <div className="foodSearchHandle" aria-hidden="true" />
+            <div className="foodSearchHeader">
+              <div>
+                <div className="label">Food search</div>
+                <h2 id="food-search-title">Find calories fast</h2>
+              </div>
+              <button className="searchCloseButton" type="button" onClick={requestCloseSearch} aria-label="Close food search">
+                <span aria-hidden="true" />
+              </button>
+            </div>
+            <form className="foodSearchForm modalSearchForm" onSubmit={handleSearch}>
+              <label>
+                Food name
+                <input
+                  autoFocus
+                  type="search"
+                  value={query}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    if (!event.target.value) {
+                      setResults([]);
+                      setSearchStatus('');
+                    }
+                  }}
+                  placeholder="Greek yoghurt, oats, chicken..."
+                />
+              </label>
+              <div className="searchActions">
+                <button className="main" type="submit" disabled={searching}>{searching ? 'Searching...' : 'Search'}</button>
+                <button className="main secondary" type="button" onClick={clearSearch}>Clear</button>
+              </div>
+            </form>
+
+            <div className="searchHintRow">
+              <span>Free test database</span>
+              <span>Tap a result to add 100g</span>
+            </div>
+
+            {searching ? (
+              <div className="searchSkeleton" aria-label="Searching foods">
+                <i /><i /><i />
+              </div>
+            ) : null}
+
+            {searchStatus ? <p className="note searchStatus">{searchStatus}</p> : null}
+            {results.length ? (
+              <div className="foodResults modalFoodResults">
+                {results.map((item, index) => (
+                  <button className="foodResult" style={{ '--result-index': index }} key={item.id} type="button" onClick={() => addSearchResult(item.id)}>
+                    <div>
+                      <b>{item.name}</b>
+                      <span>{item.brand || 'Open Food Facts'} - 100g serving</span>
+                    </div>
+                    <strong>{item.caloriesPer100g}<em>kcal</em></strong>
+                  </button>
+                ))}
+              </div>
+            ) : !searching ? (
+              <div className="searchEmptyState">
+                <b>{query ? 'No selected result yet' : 'Search packaged foods'}</b>
+                <span>{query ? 'Try a simpler name, or close this and quick add your own estimate.' : 'Use quick add for home-cooked meals, rough estimates, or anything not in the test database.'}</span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ), document.body) : null}
+      {toast ? (
+        <div className="calorieToast" role="status" aria-live="polite">
+          <span>{toast}</span>
+        </div>
+      ) : null}
     </div>
   );
 }

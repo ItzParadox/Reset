@@ -1,9 +1,9 @@
 const TABS = [
   { id: 'home', label: 'Home', icon: HomeIcon },
   { id: 'today', label: 'Today', icon: CheckIcon },
-  { id: 'water', label: 'Water', icon: WaterIcon },
   { id: 'weight', label: 'Weight', icon: WeightIcon },
-  { id: 'food', label: 'Plan', icon: PlanIcon },
+  { id: 'food', label: 'Calories', icon: CaloriesIcon },
+  { id: 'water', label: 'Water', icon: WaterIcon },
   { id: 'meds', label: 'Meds', icon: MedsIcon },
   { id: 'settings', label: 'User', icon: UserIcon },
 ];
@@ -47,8 +47,8 @@ function WaterIcon() {
   return <svg className="navSvgIcon" viewBox="0 0 24 24"><path d="M9 3h6" /><path d="M10 6h4l1.4 3.2v9.3c0 1.1-.9 2-2 2h-2.8c-1.1 0-2-.9-2-2V9.2L10 6z" /><path d="M9 14.2c1.8-1 4.2 1 6 0" /></svg>;
 }
 
-function PlanIcon() {
-  return <svg className="navSvgIcon" viewBox="0 0 24 24"><path d="M7 5h10" /><path d="M7 12h10" /><path d="M7 19h10" /></svg>;
+function CaloriesIcon() {
+  return <svg className="navSvgIcon" viewBox="0 0 24 24"><path d="M12 3c2.7 2.5 4.5 5.2 4.5 8.4A4.5 4.5 0 0 1 12 16a4.5 4.5 0 0 1-4.5-4.6C7.5 8.2 9.3 5.5 12 3z" /><path d="M9 16.5h6" /><path d="M8 20h8" /></svg>;
 }
 
 function MedsIcon() {
