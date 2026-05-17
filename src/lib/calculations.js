@@ -236,11 +236,13 @@ export function estimatePlanGoalDate(state = {}) {
   const calories = Number(settings.calorieTarget || plan.calorieTarget || 0);
   const dailyDeficit = maintenance - calories;
   const remainingKg = current - target;
+  const feedback = calculatePlanFeedback({ ...state, onboardingProfile: { ...profile, currentWeightKg: current } }, { maintenance, calories });
+  const effectiveDailyDeficit = feedback?.effectiveDailyDeficit ?? dailyDeficit;
 
-  if (![current, target, maintenance, calories, dailyDeficit, remainingKg].every(Number.isFinite)) return null;
-  if (remainingKg <= 0 || dailyDeficit <= 0) return null;
+  if (![current, target, maintenance, calories, dailyDeficit, effectiveDailyDeficit, remainingKg].every(Number.isFinite)) return null;
+  if (remainingKg <= 0 || dailyDeficit <= 0 || effectiveDailyDeficit <= 0) return null;
 
-  const estimatedDays = Math.ceil((remainingKg * 7700) / dailyDeficit);
+  const estimatedDays = Math.ceil((remainingKg * 7700) / effectiveDailyDeficit);
   if (!Number.isFinite(estimatedDays) || estimatedDays <= 0 || estimatedDays > 3650) return null;
 
   const date = new Date();
@@ -249,7 +251,54 @@ export function estimatePlanGoalDate(state = {}) {
     date,
     label: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
     days: estimatedDays,
-    weeklyLossKg: round1((dailyDeficit * 7) / 7700),
+    weeklyLossKg: round1((effectiveDailyDeficit * 7) / 7700),
+    plannedWeeklyLossKg: round1((dailyDeficit * 7) / 7700),
+    feedback,
+  };
+}
+
+export function calculatePlanFeedback(state = {}, override = {}) {
+  const logs = Array.isArray(state.weightLogs) ? state.weightLogs : [];
+  const profile = state.onboardingProfile || {};
+  const plan = state.healthPlan || {};
+  const settings = state.settings || {};
+  const current = latestWeightKg(state) || Number(profile.currentWeightKg || profile.startWeightKg || 0);
+  const maintenance = Number(override.maintenance ?? plan.maintenanceCalories ?? calculateMaintenance({ ...profile, currentWeightKg: current }) ?? 0);
+  const calories = Number(override.calories ?? settings.calorieTarget ?? plan.calorieTarget ?? 0);
+  const plannedDailyDeficit = maintenance - calories;
+
+  if (!Number.isFinite(plannedDailyDeficit) || plannedDailyDeficit <= 0) return null;
+
+  const window = feedbackWeightWindow(logs);
+  if (!window) return null;
+
+  const { comparison, latest, days, logCount } = window;
+  const actualChangeKg = Number(latest.weightKg ?? latest.weight) - Number(comparison.weightKg ?? comparison.weight);
+  const actualWeeklyChangeKg = round1((actualChangeKg / days) * 7);
+  const actualWeeklyLossKg = round1((-actualChangeKg / days) * 7);
+  const observedDailyDeficit = ((Number(comparison.weightKg ?? comparison.weight) - Number(latest.weightKg ?? latest.weight)) * 7700) / days;
+  const plannedWeeklyLossKg = round1((plannedDailyDeficit * 7) / 7700);
+  const ratio = plannedWeeklyLossKg > 0 ? round1(actualWeeklyLossKg / plannedWeeklyLossKg) : null;
+  const trust = Math.min(0.55, Math.max(0.25, (days / 120) * 0.55, (logCount / 8) * 0.35));
+  const blendedDailyDeficit = plannedDailyDeficit * (1 - trust) + observedDailyDeficit * trust;
+  const effectiveDailyDeficit = blendedDailyDeficit >= 75 ? Math.round(blendedDailyDeficit) : null;
+
+  let status = 'on_track';
+  if (actualWeeklyChangeKg > 0.05) status = 'gaining';
+  else if (Math.abs(actualWeeklyChangeKg) <= 0.05) status = 'holding';
+  else if (ratio !== null && ratio < 0.75) status = 'slower';
+  else if (ratio !== null && ratio > 1.25) status = 'faster';
+
+  return {
+    status,
+    days,
+    logCount,
+    actualWeeklyChangeKg,
+    actualWeeklyLossKg,
+    plannedWeeklyLossKg,
+    observedDailyDeficit: Math.round(observedDailyDeficit),
+    effectiveDailyDeficit,
+    ratio,
   };
 }
 
@@ -310,6 +359,37 @@ function daysBetween(start, end) {
   const b = parseDate(end);
   if (!a || !b) return 0;
   return Math.round((b - a) / 86400000);
+}
+
+function feedbackWeightWindow(logs) {
+  const sorted = logs
+    .map((log) => ({
+      ...log,
+      weightKg: Number(log.weightKg ?? log.weight),
+    }))
+    .filter((log) => parseDate(log.loggedAt) && Number.isFinite(log.weightKg) && log.weightKg > 0)
+    .sort((a, b) => a.loggedAt.localeCompare(b.loggedAt) || String(a.createdAt).localeCompare(String(b.createdAt)));
+
+  if (sorted.length < 3) return null;
+
+  const latest = sorted[sorted.length - 1];
+  const inWindow = sorted.filter((log) => {
+    const days = daysBetween(log.loggedAt, latest.loggedAt);
+    return days >= 0 && days <= 120;
+  });
+  const candidates = inWindow.filter((log) => daysBetween(log.loggedAt, latest.loggedAt) >= 28);
+  const comparison = candidates[0];
+  if (!comparison) return null;
+
+  const days = daysBetween(comparison.loggedAt, latest.loggedAt);
+  if (days < 28) return null;
+
+  return {
+    comparison,
+    latest,
+    days,
+    logCount: inWindow.length,
+  };
 }
 
 function latestWeightKg(state = {}) {

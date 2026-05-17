@@ -7,6 +7,7 @@ import {
   calculateBmr,
   calculateMaintenance,
   calculatePlan,
+  calculatePlanFeedback,
   cmToFeetInches,
   estimatePlanGoalDate,
   estimateTargetDate,
@@ -178,6 +179,35 @@ describe('projection helpers', () => {
       { loggedAt: '2026-01-15', weightKg: 98 },
     ])).toBe(-1);
     expect(weeklyChange([{ loggedAt: '2026-01-15', weightKg: 98 }])).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('adjusts plan projections after enough logged trend data exists', () => {
+    vi.setSystemTime(new Date(2026, 2, 1));
+    const state = {
+      onboardingProfile: { currentWeightKg: 98, startWeightKg: 100, goalWeightKg: 90 },
+      healthPlan: { maintenanceCalories: 2500, calorieTarget: 2000 },
+      settings: { calorieTarget: 2000 },
+      weightLogs: [
+        { loggedAt: '2026-01-01', weightKg: 100, createdAt: '2026-01-01T09:00:00.000Z' },
+        { loggedAt: '2026-01-15', weightKg: 99.5, createdAt: '2026-01-15T09:00:00.000Z' },
+        { loggedAt: '2026-02-01', weightKg: 99, createdAt: '2026-02-01T09:00:00.000Z' },
+        { loggedAt: '2026-02-15', weightKg: 98.5, createdAt: '2026-02-15T09:00:00.000Z' },
+        { loggedAt: '2026-02-26', weightKg: 98, createdAt: '2026-02-26T09:00:00.000Z' },
+      ],
+    };
+
+    const feedback = calculatePlanFeedback(state);
+    const projection = estimatePlanGoalDate(state);
+
+    expect(feedback).toMatchObject({
+      status: 'slower',
+      actualWeeklyChangeKg: -0.2,
+      plannedWeeklyLossKg: 0.5,
+    });
+    expect(projection.feedback.status).toBe('slower');
+    expect(projection.weeklyLossKg).toBeLessThan(projection.plannedWeeklyLossKg);
+    expect(projection.days).toBeGreaterThan(124);
     vi.useRealTimers();
   });
 

@@ -1,10 +1,23 @@
 import Card from '../components/Card.jsx';
-import { DEFICIT_OPTIONS, calculateMaintenance, estimatePlanGoalDate, mealStructureForProfile } from '../lib/calculations.js';
+import { DEFICIT_OPTIONS, calculateMaintenance, calculatePlanFeedback, estimatePlanGoalDate, mealStructureForProfile } from '../lib/calculations.js';
+
+function feedbackCopy(feedback) {
+  if (!feedback) return null;
+  if (feedback.status === 'faster') return 'Your logged trend is currently ahead of the formula estimate, so the projection is being nudged faster.';
+  if (feedback.status === 'slower') return 'Your logged trend is moving slower than the formula estimate, so the projection is being nudged more cautiously.';
+  if (feedback.status === 'holding') return 'Your recent logs are roughly flat, so Reset is treating the projection with extra caution.';
+  if (feedback.status === 'gaining') return 'Your recent logs are trending up, so Reset is not treating the formula target as a guaranteed deficit.';
+  return 'Your logged trend is close to the formula estimate, so the projection only needs a small adjustment.';
+}
 
 export default function Food({ state, onUpdatePlan }) {
   const selected = state.healthPlan.selectedDeficitLevel;
   const structure = mealStructureForProfile(state);
   const planMaintenance = calculateMaintenance(state.onboardingProfile) || state.healthPlan.maintenanceCalories;
+  const planFeedback = calculatePlanFeedback(state, {
+    maintenance: planMaintenance,
+    calories: state.settings.calorieTarget || state.healthPlan.calorieTarget,
+  });
   const planGoalDate = estimatePlanGoalDate({
     ...state,
     healthPlan: {
@@ -22,6 +35,11 @@ export default function Food({ state, onUpdatePlan }) {
           Estimated maintenance is {planMaintenance || 'calculating'} kcal.
           You're running a {Math.round((state.healthPlan.deficitPercentage || 0) * 100)}% deficit — enough to move the scale without flooring your energy.
         </p>
+        {planFeedback ? (
+          <p className="note strong">{feedbackCopy(planFeedback)}</p>
+        ) : (
+          <p className="note">After about four weeks of weight logs, Reset will compare the estimate with your actual trend.</p>
+        )}
       </Card>
 
       <Card>
@@ -61,7 +79,7 @@ export default function Food({ state, onUpdatePlan }) {
           <div className="label">Projected goal date</div>
           <div className="mid">{planGoalDate.label}</div>
           <p className="note">
-            Based on your current target, roughly {planGoalDate.weeklyLossKg}kg per week.
+            Based on your current target{planGoalDate.feedback ? ' and recent trend' : ''}, roughly {planGoalDate.weeklyLossKg}kg per week.
             Treat it as a compass, not a deadline.
           </p>
         </Card>
