@@ -302,8 +302,8 @@ export default function Food({ state, dailyLog, onSaveFoodEntry, onDeleteFoodEnt
           <div className="history foodLog">
             {entries.map((entry) => (
               <div className="historyRow tall foodLogRow" key={entry.id}>
-                <span><b>{entry.name}</b> {foodAmountLabel(entry)}</span>
-                <span>{entry.calories} kcal</span>
+                <span className="foodLogName"><b>{entry.name}</b> {foodAmountLabel(entry)}</span>
+                <span className="foodLogCalories">{entry.calories} kcal</span>
                 <button type="button" onClick={() => onDeleteFoodEntry(entry.id)}>Remove</button>
               </div>
             ))}

@@ -541,9 +541,12 @@ button.main:active, .choice:active { opacity: .72; }
 .foodResult strong { font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 18px; letter-spacing: -.04em; color: var(--yes); }
 .foodResult strong em { display: block; margin-top: 1px; color: var(--dim); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; font-size: 10px; font-style: normal; font-weight: 900; letter-spacing: .03em; text-transform: uppercase; }
 .foodLogRow button { border: 1px solid var(--line); border-radius: 11px; background: var(--s3); color: var(--text); padding: 9px 10px; font-size: 12px; font-weight: 850; white-space: nowrap; }
-.foodLog { max-height: 360px; }
-.foodLogRow { position: relative; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; }
-.foodLogRow button { grid-column: 1 / -1; justify-self: start; color: var(--bad); border-color: rgba(255,116,116,.28); background: transparent; padding: 7px 9px; }
+.foodLog { max-height: 360px; max-width: 100%; overflow-x: hidden; overscroll-behavior: contain; }
+.foodLogRow { position: relative; width: 100%; max-width: 100%; min-width: 0; grid-template-columns: minmax(0, 1fr) max-content; gap: 6px 10px; overflow: hidden; animation: diaryEntryIn .2s ease-out both; }
+.foodLogRow span { min-width: 0; }
+.foodLogName { overflow-wrap: anywhere; word-break: break-word; line-height: 1.35; }
+.foodLogCalories { justify-self: end; white-space: nowrap; }
+.foodLogRow button { grid-column: 1 / -1; justify-self: start; max-width: 100%; color: var(--bad); border-color: rgba(255,116,116,.28); background: transparent; padding: 7px 9px; }
 .emptyDiary { border: 1px dashed rgba(255,255,255,.14); border-radius: 14px; padding: 14px; background: rgba(255,255,255,.025); }
 .emptyDiary b { display: block; font-size: 14px; }
 .emptyDiary span { display: block; margin-top: 5px; color: var(--dim); font-size: 13px; line-height: 1.4; }
@@ -571,7 +574,7 @@ button.main:active, .choice:active { opacity: .72; }
 .searchEmptyState b { display: block; font-size: 14px; }
 .searchEmptyState span { display: block; margin-top: 5px; color: var(--dim); font-size: 13px; line-height: 1.4; }
 .calorieToast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 88px); z-index: 150; transform: translateX(-50%); width: min(360px, calc(100vw - 32px)); border: 1px solid rgba(216,255,90,.34); border-radius: 15px; background: rgba(18,18,18,.96); box-shadow: 0 18px 60px rgba(0,0,0,.48); padding: 11px 13px; animation: calorieToastIn .28s cubic-bezier(.16,1,.2,1) both; }
-.calorieToast span { display: block; color: var(--text); font-size: 13px; font-weight: 850; text-align: center; }
+.calorieToast span { display: block; color: var(--text); font-size: 13px; font-weight: 850; text-align: center; overflow-wrap: anywhere; }
 
 /* ─── Plan choices ───────────────────────────────────────────── */
 .planChoice { padding: 14px; overflow: hidden; }
@@ -702,6 +705,7 @@ button.main:active, .choice:active { opacity: .72; }
 @keyframes searchResultIn { from { opacity: 0; transform: translateY(7px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes skeletonSweep { from { background-position: 160% 0; } to { background-position: -60% 0; } }
 @keyframes calorieToastIn { from { opacity: 0; transform: translate(-50%, 12px) scale(.98); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes diaryEntryIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes confettiBurst {
   0%   { opacity: 0; transform: translate(-50%, -50%) rotate(0deg) scale(.8); }
   10%  { opacity: 1; }
