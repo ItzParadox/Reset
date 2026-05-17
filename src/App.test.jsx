@@ -375,6 +375,45 @@ describe('Reset app integration', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /find calories fast/i })).not.toBeInTheDocument());
   });
 
+  it('adds a searched food and keeps the add toast outside the page stack', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [{
+          id: 'crisps-520',
+          name: 'Lightly sea salted crisps',
+          brand: 'Test foods',
+          caloriesPer100g: 520,
+        }],
+      }),
+    });
+    localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
+      settings: { preferredUnits: 'metric', calorieTarget: 2019 },
+      healthPlan: {
+        bmrCalories: 1979,
+        maintenanceCalories: 2375,
+        selectedDeficitLevel: 'moderate',
+        deficitPercentage: 0.15,
+        calorieTarget: 2019,
+      },
+      ui: { activeTab: 'food' },
+    })));
+
+    render(<App />);
+    await screen.findByText('Calories today', {}, { timeout: 2500 });
+    await user.click(screen.getByRole('button', { name: /^search$/i }));
+    const dialog = await screen.findByRole('dialog', { name: /find calories fast/i });
+    await user.type(within(dialog).getByPlaceholderText(/Greek yoghurt/i), 'crisps');
+    await user.click(within(dialog).getByRole('button', { name: /^search$/i }));
+    await user.click(await within(dialog).findByRole('button', { name: /Lightly sea salted crisps/i }));
+
+    expect(await screen.findByText('Lightly sea salted crisps')).toBeInTheDocument();
+    const toast = screen.getByRole('status');
+    expect(toast).toHaveTextContent('Lightly sea salted crisps added');
+    expect(toast.parentElement).toBe(document.body);
+  });
+
   it('resets scroll position after switching main tabs', async () => {
     const user = userEvent.setup();
     localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({

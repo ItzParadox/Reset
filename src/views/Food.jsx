@@ -234,6 +234,7 @@ export default function Food({ state, dailyLog, onSaveFoodEntry, onDeleteFoodEnt
   }
 
   return (
+    <>
     <div className="staggerStack">
       <Card className={`heroCard calorieHero ${progressClass(consumed, targetCalories)}`}>
         <div className="calorieHeroTop">
@@ -384,11 +385,12 @@ export default function Food({ state, dailyLog, onSaveFoodEntry, onDeleteFoodEnt
           </div>
         </div>
       ), document.body) : null}
-      {toast ? (
+    </div>
+    {toast ? createPortal((
         <div className="calorieToast" role="status" aria-live="polite">
           <span>{toast}</span>
         </div>
-      ) : null}
-    </div>
+      ), document.body) : null}
+    </>
   );
 }
