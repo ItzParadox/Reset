@@ -37,6 +37,12 @@ function timerLabel(seconds) {
   return `${minutes}:${secs}`;
 }
 
+function resetViewportScroll() {
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+}
+
 
 class AppErrorBoundary extends Component {
   constructor(props) {
@@ -109,6 +115,15 @@ function AppContent() {
   }, [showMedicationTab, state.ui.activeTab]);
 
   useEffect(() => {
+    if (window.requestAnimationFrame && window.cancelAnimationFrame) {
+      const frame = window.requestAnimationFrame(resetViewportScroll);
+      return () => window.cancelAnimationFrame(frame);
+    }
+    const timeout = window.setTimeout(resetViewportScroll, 0);
+    return () => window.clearTimeout(timeout);
+  }, [state.ui.activeTab]);
+
+  useEffect(() => {
     const bootTimer = window.setTimeout(() => setBooting(false), 1700);
     return () => window.clearTimeout(bootTimer);
   }, []);
@@ -173,7 +188,7 @@ function AppContent() {
       draft.ui.activeTab = activeTab;
       return draft;
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    resetViewportScroll();
   }
 
   function saveWeight(weightKg) {

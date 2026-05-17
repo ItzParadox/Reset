@@ -375,6 +375,34 @@ describe('Reset app integration', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /find calories fast/i })).not.toBeInTheDocument());
   });
 
+  it('resets scroll position after switching main tabs', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
+      settings: { preferredUnits: 'metric', calorieTarget: 2019 },
+      healthPlan: {
+        bmrCalories: 1979,
+        maintenanceCalories: 2375,
+        selectedDeficitLevel: 'moderate',
+        deficitPercentage: 0.15,
+        calorieTarget: 2019,
+      },
+      ui: { activeTab: 'food' },
+    })));
+
+    render(<App />);
+    await screen.findByText('Calories today', {}, { timeout: 2500 });
+    window.scrollTo.mockClear();
+    document.documentElement.scrollTop = 900;
+    document.body.scrollTop = 900;
+
+    await user.click(screen.getByRole('button', { name: /^today$/i }));
+
+    await screen.findByText('Calories - 0 / 2019 kcal');
+    await waitFor(() => expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' }));
+    expect(document.documentElement.scrollTop).toBe(0);
+    expect(document.body.scrollTop).toBe(0);
+  });
+
   it('shows Calories but not Meds for users without medication enabled', async () => {
     localStorage.setItem('reset_state_v7', JSON.stringify(stateWithPatch({
       onboardingProfile: {
