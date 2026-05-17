@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Card from '../components/Card.jsx';
 import MetricCard from '../components/MetricCard.jsx';
+import ProgressGraph from '../components/ProgressGraph.jsx';
 import { currentWeight } from '../lib/storage.js';
 import { bmiClassName, bmiVisualStyle, formatDoseMg, goalProjection, weeklyChange } from '../lib/calculations.js';
 import { formatWeight, formatWeightDelta, weightUnit } from '../lib/units.js';
@@ -91,109 +92,9 @@ function guidanceItems({ state, current, target, pct, doneCount, projection, uni
   return items.slice(0, 3);
 }
 
-function parseDate(value) {
-  const [year, month, day] = String(value || '').split('-').map(Number);
-  if (!year || !month || !day) return null;
-  return new Date(year, month - 1, day);
-}
-
-function daysBetween(start, end) {
-  const a = parseDate(start);
-  const b = parseDate(end);
-  if (!a || !b) return 0;
-  return Math.max(0, Math.round((b - a) / 86400000));
-}
-
-function localDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function shortDate(value) {
-  const date = parseDate(value);
-  if (!date) return 'Today';
-  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-}
-
-function buildProjectionChart({ state, current, start, target, projection, units }) {
-  const logs = Array.isArray(state.weightLogs) ? state.weightLogs : [];
-  const actual = logs
-    .map((log) => ({
-      dateKey: log.loggedAt,
-      weightKg: Number(log.weightKg ?? log.weight),
-    }))
-    .filter((point) => parseDate(point.dateKey) && Number.isFinite(point.weightKg) && point.weightKg > 0)
-    .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
-
-  const todayKey = localDateKey();
-  if (!actual.length && Number.isFinite(start) && start > 0) {
-    actual.push({ dateKey: todayKey, weightKg: start });
-  }
-
-  const latestActual = actual[actual.length - 1];
-  if (Number.isFinite(current) && current > 0 && (!latestActual || Math.abs(latestActual.weightKg - current) > 0.05)) {
-    actual.push({ dateKey: todayKey, weightKg: current });
-  }
-
-  const projectionDays = Number(projection?.days || 0);
-  const hasProjection = projectionDays > 0 && Number.isFinite(target) && target > 0 && current > target;
-  const projectionDate = hasProjection ? new Date() : null;
-  if (projectionDate) projectionDate.setDate(projectionDate.getDate() + projectionDays);
-
-  const future = hasProjection
-    ? { dateKey: localDateKey(projectionDate), weightKg: target }
-    : null;
-  const allWeights = [...actual, ...(future ? [future] : []), { weightKg: start }, { weightKg: target }]
-    .map((point) => Number(point.weightKg))
-    .filter((value) => Number.isFinite(value) && value > 0);
-
-  const weightDomain = allWeights.length ? allWeights : [0, 1];
-  const minWeight = Math.min(...weightDomain);
-  const maxWeight = Math.max(...weightDomain);
-  const pad = Math.max(1, (maxWeight - minWeight) * 0.12);
-  const yMin = minWeight - pad;
-  const yMax = maxWeight + pad;
-  const firstDate = actual[0]?.dateKey || todayKey;
-  const lastDate = future?.dateKey || actual[actual.length - 1]?.dateKey || todayKey;
-  const spanDays = Math.max(1, daysBetween(firstDate, lastDate));
-  const xFor = (dateKey) => 8 + (daysBetween(firstDate, dateKey) / spanDays) * 84;
-  const yFor = (weightKg) => 12 + ((yMax - weightKg) / Math.max(1, yMax - yMin)) * 76;
-  const toSvgPoint = (point) => ({
-    ...point,
-    x: xFor(point.dateKey),
-    y: yFor(point.weightKg),
-  });
-  const actualSvg = actual.map(toSvgPoint);
-  const futureSvg = future ? toSvgPoint(future) : null;
-  const actualPath = actualSvg.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ');
-  const futurePath = latestActual && futureSvg
-    ? `M ${xFor(latestActual.dateKey).toFixed(2)} ${yFor(latestActual.weightKg).toFixed(2)} L ${futureSvg.x.toFixed(2)} ${futureSvg.y.toFixed(2)}`
-    : '';
-
-  return {
-    actual: actualSvg,
-    future: futureSvg,
-    actualPath,
-    futurePath,
-    firstDate,
-    lastDate,
-    maxWeight,
-    minWeight,
-    hasProjection,
-    aboveStart: current > start,
-    projectionDays,
-    weeklyLossKg: projection?.weeklyLossKg,
-    units,
-  };
-}
-
 function ProjectionModal({ state, current, start, target, projection, units, onClose }) {
   const [closing, setClosing] = useState(false);
   const closeTimer = useRef(null);
-  const chart = buildProjectionChart({ state, current, start, target, projection, units });
-  const latest = chart.actual[chart.actual.length - 1];
 
   function requestClose() {
     if (closing) return;
@@ -262,23 +163,14 @@ function ProjectionModal({ state, current, start, target, projection, units, onC
           <div><span>Goal</span><b>{formatWeight(target, units, 'not set')}</b></div>
         </div>
 
-        <div className="projectionChart">
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <line x1="8" y1="12" x2="92" y2="12" />
-            <line x1="8" y1="50" x2="92" y2="50" />
-            <line x1="8" y1="88" x2="92" y2="88" />
-            {chart.actualPath ? <path className="actualLine" d={chart.actualPath} /> : null}
-            {chart.futurePath ? <path className="projectedLine" d={chart.futurePath} /> : null}
-            {chart.actual.map((point, index) => (
-              <circle key={`${point.dateKey}-${index}`} className={index === chart.actual.length - 1 ? 'currentDot' : 'actualDot'} cx={point.x} cy={point.y} r="1.8" />
-            ))}
-            {chart.future ? <circle className="goalDot" cx={chart.future.x} cy={chart.future.y} r="2.1" /> : null}
-          </svg>
-          <span className="chartWeight high">{formatWeight(chart.maxWeight, units, '')}</span>
-          <span className="chartWeight low">{formatWeight(chart.minWeight, units, '')}</span>
-          <span className="chartDate start">{shortDate(chart.firstDate)}</span>
-          <span className="chartDate end">{shortDate(chart.lastDate)}</span>
-        </div>
+        <ProgressGraph
+          state={state}
+          current={current}
+          start={start}
+          target={target}
+          projection={projection}
+          units={units}
+        />
 
         <div className="projectionStats">
           <div><span>Current</span><b>{formatWeight(current, units, 'not set')}</b></div>
@@ -287,17 +179,14 @@ function ProjectionModal({ state, current, start, target, projection, units, onC
         </div>
 
         <div className="projectionLegend">
-          <span><i className="actualKey" /> Logged weight</span>
-          <span><i className="projectedKey" /> Projection</span>
+          <span><i className="actualKey" aria-hidden="true" /> Logged weight</span>
+          {projection ? <span><i className="projectedKey" aria-hidden="true" /> Projection estimate</span> : null}
         </div>
         <p className="note">
-          {chart.aboveStart
-            ? 'Your current weight is above your starting weight, so the chart shows that rise before projecting down toward the goal.'
-            : chart.hasProjection
-              ? `Projected pace is roughly ${chart.weeklyLossKg || 'calculating'}kg per week from the active plan.`
-              : 'The graph will add a projected segment once there is enough plan data.'}
+          {projection
+            ? 'Projection is an estimate, not a guarantee. It will move as your logs, calorie target, and plan change.'
+            : 'The graph will add a projected segment once there is enough plan or log data.'}
         </p>
-        {latest ? <p className="note projectionFinePrint">Latest logged point: {formatWeight(latest.weightKg, units, '')} on {shortDate(latest.dateKey)}.</p> : null}
       </div>
     </div>
   ), document.body);

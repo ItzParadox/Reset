@@ -464,20 +464,23 @@ button.main:active, .choice:active { opacity: .72; }
 .projectionJourney div { min-width: 0; padding: 9px 8px; border: 1px solid rgba(216,255,90,.12); border-radius: 13px; background: rgba(216,255,90,.035); }
 .projectionJourney span { display: block; color: var(--dim); font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .09em; }
 .projectionJourney b { display: block; margin-top: 5px; color: #fff; font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: clamp(11px, 3vw, 13px); line-height: 1.05; letter-spacing: -.035em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.projectionChart { position: relative; height: 248px; margin-top: 12px; overflow: hidden; border-radius: 18px; background: radial-gradient(circle at 78% 18%, rgba(216,255,90,.06), transparent 34%), linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)); border: 1px solid rgba(255,255,255,.075); }
-.projectionChart svg { position: absolute; inset: 22px 28px 42px 52px; width: calc(100% - 80px); height: calc(100% - 64px); overflow: visible; }
-.projectionChart line { stroke: rgba(255,255,255,.07); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.projectionChart path { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.actualLine { stroke: rgba(255,255,255,.92); stroke-width: 3.4; filter: drop-shadow(0 8px 16px rgba(255,255,255,.08)); animation: trendDraw .7s cubic-bezier(.2,1,.25,1) both; }
-.projectedLine { stroke: var(--yes); stroke-width: 3.6; stroke-dasharray: 5 5; filter: drop-shadow(0 8px 16px rgba(216,255,90,.14)); animation: trendDraw .82s cubic-bezier(.2,1,.25,1) .12s both; }
-.actualDot { fill: #fff; stroke: #080808; stroke-width: 1.6; vector-effect: non-scaling-stroke; }
-.currentDot { fill: #7ebcff; stroke: #080808; stroke-width: 1.8; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 8px rgba(126,188,255,.34)); }
-.goalDot { fill: var(--yes); stroke: #080808; stroke-width: 1.8; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 10px rgba(216,255,90,.36)); }
-.chartWeight, .chartDate { position: absolute; color: var(--dim); font-size: 11px; font-weight: 850; line-height: 1; }
-.chartWeight.high { top: 22px; left: 13px; }
-.chartWeight.low { bottom: 48px; left: 13px; }
-.chartDate.start { left: 52px; bottom: 15px; }
-.chartDate.end { right: 18px; bottom: 15px; }
+.pg { margin-top: 12px; }
+.pg-ranges { display: flex; gap: 6px; margin-bottom: 10px; }
+.pg-range { padding: 5px 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; background: transparent; color: var(--dim); font-size: 11px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; transition: border-color .14s, color .14s, background .14s; }
+.pg-range.active { border-color: rgba(216,255,90,.5); background: rgba(216,255,90,.08); color: var(--yes); }
+.pg-chart { border-radius: 18px; background: radial-gradient(circle at 78% 18%, rgba(216,255,90,.055), transparent 38%), linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.016)); border: 1px solid rgba(255,255,255,.07); overflow: hidden; }
+.pg-svg { display: block; width: 100%; height: auto; }
+.pg-grid { stroke: rgba(255,255,255,.07); stroke-width: .5; }
+.pg-axis-label { fill: rgba(255,255,255,.32); font-size: 7.5px; font-weight: 700; text-anchor: end; font-family: 'DM Mono', ui-monospace, monospace; }
+.pg-date-label { fill: rgba(255,255,255,.28); font-size: 7.5px; font-weight: 700; text-anchor: start; font-family: 'DM Mono', ui-monospace, monospace; }
+.pg-date-end { text-anchor: end; }
+.pg-actual-line { fill: none; stroke: rgba(255,255,255,.88); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; animation: pgLineDraw .7s cubic-bezier(.2,1,.25,1) both; }
+.pg-projection-line { fill: none; stroke: var(--yes); stroke-width: 2.2; stroke-dasharray: 6 4; stroke-linecap: round; animation: pgLineDraw .85s cubic-bezier(.2,1,.25,1) .1s both; }
+.pg-dot-start { fill: rgba(255,255,255,.5); stroke: #080808; stroke-width: 1.2; }
+.pg-dot-current { fill: #7ebcff; stroke: #080808; stroke-width: 1.8; }
+.pg-dot-goal { fill: var(--yes); stroke: #080808; stroke-width: 1.8; }
+.pg-range-note { margin-top: 8px; font-size: 12px; }
+@keyframes pgLineDraw { from { opacity: 0; stroke-dashoffset: 400; stroke-dasharray: 400 400; } to { opacity: 1; } }
 .projectionStats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
 .projectionStats div { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.035); }
 .projectionStats div:last-child { grid-column: 1 / -1; }
