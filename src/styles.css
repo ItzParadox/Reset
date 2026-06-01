@@ -154,6 +154,20 @@ button.main:active, .choice:active { opacity: .72; }
 .historyRow { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--dim); }
 .historyRow:last-child { border-bottom: none; }
 .historyRow span:last-child { color: var(--text); font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* Weight history with trend + delete */
+.weightHistory { max-height: 320px; }
+.weightHistoryRow { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.weightHistoryRow:last-child { border-bottom: none; }
+.weightHistoryDate { font-size: 13px; color: var(--dim); line-height: 1.2; }
+.weightHistoryDate em { display: block; font-style: normal; font-size: 11px; color: var(--off); margin-top: 2px; }
+.weightHistoryVal { font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; font-weight: 700; letter-spacing: -.03em; color: var(--text); white-space: nowrap; }
+.weightHistoryDelta { font-size: 12px; font-weight: 800; white-space: nowrap; min-width: 52px; text-align: right; }
+.deltaDown { color: #63ff95; }
+.deltaUp { color: var(--bad); }
+.deltaNeutral { color: var(--off); }
+.weightHistoryDelete { width: 28px; height: 28px; flex: 0 0 28px; border: 1px solid rgba(255,255,255,.08); border-radius: 8px; background: transparent; color: var(--off); font-size: 16px; line-height: 1; display: grid; place-items: center; transition: border-color .14s, color .14s, background-color .14s; }
+.weightHistoryDelete:active { border-color: rgba(255,116,116,.42); color: var(--bad); background: rgba(255,116,116,.08); }
 .historyRow.tall { display: grid; grid-template-columns: 1fr auto; align-items: start; }
 .historyRow.tall span:first-child { color: var(--dim); font-family: inherit; }
 .historyRow.tall span:first-child b { color: var(--text); margin-right: 2px; }
