@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import Card from '../components/Card.jsx';
 import MetricCard from '../components/MetricCard.jsx';
-import ProgressGraph from '../components/ProgressGraph.jsx';
+import ProjectionModal from '../components/ProjectionModal.jsx';
 import { currentWeight } from '../lib/storage.js';
 import { bmiClassName, bmiVisualStyle, formatDoseMg, goalProjection, weeklyChange } from '../lib/calculations.js';
 import { formatWeight, formatWeightDelta, weightUnit } from '../lib/units.js';
@@ -90,106 +89,6 @@ function guidanceItems({ state, current, target, pct, doneCount, projection, uni
   }
 
   return items.slice(0, 3);
-}
-
-function ProjectionModal({ state, current, start, target, projection, units, onClose }) {
-  const [closing, setClosing] = useState(false);
-  const closeTimer = useRef(null);
-
-  function requestClose() {
-    if (closing) return;
-    setClosing(true);
-    closeTimer.current = window.setTimeout(onClose, 240);
-  }
-
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    const body = document.body;
-    const html = document.documentElement;
-    const previousBody = {
-      overflow: body.style.overflow,
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      right: body.style.right,
-      width: body.style.width,
-    };
-    const previousHtmlOverflow = html.style.overflow;
-
-    body.style.overflow = 'hidden';
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.left = '0';
-    body.style.right = '0';
-    body.style.width = '100%';
-    html.style.overflow = 'hidden';
-
-    return () => {
-      window.clearTimeout(closeTimer.current);
-      body.style.overflow = previousBody.overflow;
-      body.style.position = previousBody.position;
-      body.style.top = previousBody.top;
-      body.style.left = previousBody.left;
-      body.style.right = previousBody.right;
-      body.style.width = previousBody.width;
-      html.style.overflow = previousHtmlOverflow;
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') requestClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [closing]);
-
-  return createPortal((
-    <div className={`modalBackdrop projectionBackdrop ${closing ? 'closing' : ''}`} role="dialog" aria-modal="true" aria-labelledby="projection-title" onClick={requestClose}>
-      <div className={`projectionModal card ${closing ? 'closing' : ''}`} onClick={(event) => event.stopPropagation()}>
-        <button className="projectionClose" type="button" onClick={requestClose} aria-label="Close projection"><span aria-hidden="true" /></button>
-        <div className="label">Projection</div>
-        <h2 id="projection-title">Weight timeline</h2>
-        <p className="note">
-          {projection
-            ? `Based on your current weight, goal, and active calorie plan, Reset projects ${projection.label}.`
-            : 'Log more weight data or set a calorie plan to calculate a projected arrival.'}
-        </p>
-
-        <div className="projectionJourney">
-          <div><span>Start</span><b>{formatWeight(start, units, 'not set')}</b></div>
-          <div><span>Current</span><b>{formatWeight(current, units, 'not set')}</b></div>
-          <div><span>Goal</span><b>{formatWeight(target, units, 'not set')}</b></div>
-        </div>
-
-        <ProgressGraph
-          state={state}
-          current={current}
-          start={start}
-          target={target}
-          projection={projection}
-          units={units}
-        />
-
-        <div className="projectionStats">
-          <div><span>Current</span><b>{formatWeight(current, units, 'not set')}</b></div>
-          <div><span>Goal</span><b>{formatWeight(target, units, 'not set')}</b></div>
-          <div><span>Projected</span><b>{projection?.label || 'Need data'}</b></div>
-        </div>
-
-        <div className="projectionLegend">
-          <span><i className="actualKey" aria-hidden="true" /> Logged weight</span>
-          {projection ? <span><i className="projectedKey" aria-hidden="true" /> Projection estimate</span> : null}
-        </div>
-        <p className="note">
-          {projection
-            ? 'Projection is an estimate, not a guarantee. It will move as your logs, calorie target, and plan change.'
-            : 'The graph will add a projected segment once there is enough plan or log data.'}
-        </p>
-      </div>
-    </div>
-  ), document.body);
 }
 
 export default function Home({ state, todayDailyLog, onChangeTab }) {

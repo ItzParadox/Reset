@@ -26,7 +26,18 @@ function changeCopy(change, units) {
   return 'Same as start';
 }
 
-export default function Weight({ state, logs, onSaveWeight }) {
+// Returns the signed delta and a direction class for a log entry vs the one before it.
+function entryDelta(logs, index) {
+  const next = logs[index + 1]; // chronologically older
+  if (!next) return null;
+  const delta = Number(logs[index].weightKg) - Number(next.weightKg);
+  if (Math.abs(delta) < 0.05) return { delta: 0, cls: 'deltaNeutral', arrow: '→' };
+  return delta < 0
+    ? { delta, cls: 'deltaDown', arrow: '↓' }
+    : { delta, cls: 'deltaUp', arrow: '↑' };
+}
+
+export default function Weight({ state, logs, onSaveWeight, onDeleteWeight }) {
   const [weight, setWeight] = useState('');
   const [error, setError] = useState('');
   const units = state.settings.preferredUnits;
@@ -90,13 +101,33 @@ export default function Weight({ state, logs, onSaveWeight }) {
 
       <Card>
         <div className="label">History</div>
-        <div className="history">
-          {logs.length ? logs.map((log) => (
-            <div className="historyRow" key={log.id}>
-              <span>{log.displayDate}{formatTime(log.createdAt) ? ` - ${formatTime(log.createdAt)}` : ''}</span>
-              <span>{formatWeight(log.weightKg, units)}</span>
-            </div>
-          )) : <p className="note">Nothing logged yet. Your first entry will show up here.</p>}
+        <div className="history weightHistory">
+          {logs.length ? logs.map((log, index) => {
+            const d = entryDelta(logs, index);
+            const timeStr = formatTime(log.createdAt);
+            return (
+              <div className="weightHistoryRow" key={log.id}>
+                <span className="weightHistoryDate">
+                  {log.displayDate}
+                  {timeStr ? <em>{timeStr}</em> : null}
+                </span>
+                <span className="weightHistoryVal">{formatWeight(log.weightKg, units)}</span>
+                <span className={`weightHistoryDelta ${d ? d.cls : 'deltaNeutral'}`}>
+                  {d ? `${d.arrow} ${d.delta === 0 ? '–' : formatWeightDelta(d.delta, units).replace('+', '')}` : '–'}
+                </span>
+                {onDeleteWeight ? (
+                  <button
+                    className="weightHistoryDelete"
+                    type="button"
+                    aria-label={`Remove log from ${log.displayDate}`}
+                    onClick={() => onDeleteWeight(log.id)}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            );
+          }) : <p className="note">Nothing logged yet. Your first entry will show up here.</p>}
         </div>
       </Card>
     </>

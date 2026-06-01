@@ -211,6 +211,19 @@ function AppContent() {
     }
   }
 
+  function deleteWeight(logId) {
+    commit((draft) => {
+      draft.weightLogs = draft.weightLogs.filter((log) => log.id !== logId);
+      const latest = draft.weightLogs[0];
+      if (latest) {
+        draft.onboardingProfile.currentWeightKg = Number(latest.weightKg);
+        draft.healthPlan = calculatePlan(draft.onboardingProfile, draft.healthPlan.selectedDeficitLevel, draft.healthPlan.warningAcknowledged);
+        draft.settings.calorieTarget = draft.healthPlan.calorieTarget;
+      }
+      return draft;
+    });
+  }
+
   function saveSettings(nextSettings) {
     const updatedAt = new Date().toISOString();
     commit((draft) => {
@@ -435,7 +448,7 @@ function AppContent() {
       />
     ),
     water: <Water state={state} dailyLog={todayDailyLog} onAddWater={addWater} onResetWater={resetWater} onSaveWaterStep={saveWaterStep} onSaveHydrationTarget={saveHydrationTarget} />,
-    weight: <Weight state={state} logs={state.weightLogs} onSaveWeight={saveWeight} />,
+    weight: <Weight state={state} logs={state.weightLogs} onSaveWeight={saveWeight} onDeleteWeight={deleteWeight} />,
     food: <Food state={state} dailyLog={todayDailyLog} onSaveFoodEntry={saveFoodEntry} onDeleteFoodEntry={deleteFoodEntry} />,
     meds: <Meds state={state} medicationLog={currentMedicationLog} onSaveMedicationLog={saveMedicationLog} />,
     settings: (
