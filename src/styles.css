@@ -363,45 +363,72 @@ button.main:active, .choice:active { opacity: .72; }
 .bmiObese { border-color: rgba(255, 65, 54, .78) !important; background: linear-gradient(180deg, rgba(255,65,54,.15), rgba(255,65,54,.065)) !important; }
 
 /* Live BMI panel */
-.bmiPanel.liveBmi {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: flex-start !important;
-  min-height: 120px !important;
-  gap: 5px !important;
-  padding: 17px 18px !important;
-  border-color: color-mix(in srgb, var(--bmi-color) 56%, transparent) !important;
-  background: var(--bmi-bg) !important;
+.bmiPanel.liveBmi,
+.bmiPanel.compact.liveBmi {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
+  gap: 6px 12px;
+  align-items: start;
+  min-height: 120px;
+  padding: 17px 18px;
+  border-color: color-mix(in srgb, var(--bmi-color) 56%, transparent);
+  background: var(--bmi-bg);
   box-shadow: 0 16px 40px color-mix(in srgb, var(--bmi-color) 10%, transparent);
   transition: background-color .45s ease, border-color .45s ease, box-shadow .45s ease, opacity .18s ease, filter .18s ease;
 }
-.bmiPanel.liveBmi.isStale { opacity: .72; filter: saturate(.82); }
-.bmiPanel.liveBmi .bmiLabelText {
-  color: #ffffff !important;
-  font-size: 15px !important;
-  font-weight: 950 !important;
-  letter-spacing: .13em !important;
-  line-height: 1 !important;
+.bmiPanel.liveBmi.isStale,
+.bmiPanel.compact.liveBmi.isStale { opacity: .72; filter: saturate(.82); }
+.bmiPanel.liveBmi .bmiLabelText,
+.bmiPanel.compact.liveBmi .bmiLabelText {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  align-self: start;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 950;
+  letter-spacing: .13em;
+  line-height: 1;
 }
-.bmiPanel.liveBmi .bmiNumberText {
-  display: block !important;
-  color: #ffffff !important;
-  font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace !important;
-  font-size: clamp(44px, 12vw, 56px) !important;
-  font-weight: 950 !important;
-  line-height: .95 !important;
-  letter-spacing: -.07em !important;
-  margin-top: 4px !important;
+.bmiPanel.liveBmi .bmiNumberText,
+.bmiPanel.compact.liveBmi .bmiNumberText {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-self: center;
+  align-self: center;
+  display: block;
+  color: #fff;
+  font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(38px, 10vw, 48px);
+  font-weight: 950;
+  line-height: .95;
+  letter-spacing: -.07em;
+  margin-top: 0;
 }
-.bmiPanel.liveBmi em {
-  color: var(--bmi-color) !important;
-  font-size: 14px !important;
-  font-weight: 900 !important;
-  font-style: normal !important;
-  line-height: 1.1 !important;
+.bmiPanel.liveBmi .rollingNumber,
+.bmiPanel.compact.liveBmi .rollingNumber,
+.bmiPanel.liveBmi .rollingNumber > span,
+.bmiPanel.compact.liveBmi .rollingNumber > span {
+  font-size: clamp(38px, 10vw, 48px);
+  color: #fff;
+}
+.bmiPanel.liveBmi em,
+.bmiPanel.compact.liveBmi em {
+  grid-column: 2;
+  grid-row: 3;
+  justify-self: end;
+  align-self: end;
+  text-align: right;
+  color: var(--bmi-color);
+  font-size: 14px;
+  font-weight: 900;
+  font-style: normal;
+  line-height: 1.1;
 }
 .bmiObese.liveBmi em,
-.bmiObese .bmiCategoryLine { color: #ff5a52 !important; }
+.bmiObese.compact.liveBmi em,
+.bmiObese .bmiCategoryLine { color: #ff5a52; }
 
 /* BMI feature card */
 .bmiFeature {
@@ -783,67 +810,3 @@ button.main:active, .choice:active { opacity: .72; }
 @keyframes progressSettle { from { transform: scaleX(.82); transform-origin: left; } to { transform: scaleX(1); transform-origin: left; } }
 @keyframes trendDraw { from { stroke-dasharray: 160; stroke-dashoffset: 160; opacity: .35; } to { stroke-dasharray: 160; stroke-dashoffset: 0; opacity: 1; } }
 
-/* Setup BMI layout carried over from TAKE FROM THIS baseline */
-.bmiPanel.liveBmi,
-.bmiPanel.compact.liveBmi {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  grid-template-rows: auto auto auto !important;
-  gap: 6px 12px !important;
-  align-items: start !important;
-  min-height: 120px !important;
-  padding: 17px 18px !important;
-  border-color: color-mix(in srgb, var(--bmi-color) 56%, transparent) !important;
-  background: var(--bmi-bg) !important;
-  box-shadow: 0 16px 40px color-mix(in srgb, var(--bmi-color) 10%, transparent);
-  transition: background-color .45s ease, border-color .45s ease, box-shadow .45s ease;
-}
-.bmiPanel.liveBmi .bmiLabelText,
-.bmiPanel.compact.liveBmi .bmiLabelText {
-  grid-column: 1 !important;
-  grid-row: 1 !important;
-  justify-self: start !important;
-  align-self: start !important;
-  color: #fff !important;
-  font-size: 15px !important;
-  font-weight: 950 !important;
-  letter-spacing: .13em !important;
-  line-height: 1 !important;
-}
-.bmiPanel.liveBmi .bmiNumberText,
-.bmiPanel.compact.liveBmi .bmiNumberText {
-  grid-column: 1 / -1 !important;
-  grid-row: 2 !important;
-  justify-self: center !important;
-  align-self: center !important;
-  display: block !important;
-  color: #fff !important;
-  font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace !important;
-  font-size: clamp(38px, 10vw, 48px) !important;
-  font-weight: 950 !important;
-  line-height: .95 !important;
-  letter-spacing: -.07em !important;
-  margin-top: 0 !important;
-}
-.bmiPanel.liveBmi em,
-.bmiPanel.compact.liveBmi em {
-  grid-column: 2 !important;
-  grid-row: 3 !important;
-  justify-self: end !important;
-  align-self: end !important;
-  text-align: right !important;
-  color: var(--bmi-color) !important;
-  font-size: 14px !important;
-  font-weight: 900 !important;
-  font-style: normal !important;
-  line-height: 1.1 !important;
-}
-.bmiPanel.liveBmi .rollingNumber,
-.bmiPanel.compact.liveBmi .rollingNumber,
-.bmiPanel.liveBmi .rollingNumber > span,
-.bmiPanel.compact.liveBmi .rollingNumber > span {
-  font-size: clamp(38px, 10vw, 48px) !important;
-  color: #fff !important;
-}
-.bmiObese.liveBmi em,
-.bmiObese.compact.liveBmi em { color: #ff5a52 !important; }
