@@ -79,6 +79,8 @@ export default function Food({ state, dailyLog, onSaveFoodEntry, onDeleteFoodEnt
   const [results, setResults] = useState([]);
   const [searchStatus, setSearchStatus] = useState('');
   const [searching, setSearching] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
+  const [portionGrams, setPortionGrams] = useState('100');
   const [manualName, setManualName] = useState('');
   const [manualCalories, setManualCalories] = useState('');
   const [manualError, setManualError] = useState('');
@@ -140,6 +142,8 @@ export default function Food({ state, dailyLog, onSaveFoodEntry, onDeleteFoodEnt
     setResults([]);
     setSearchStatus('');
     setSearching(false);
+    setSelectedId(null);
+    setPortionGrams('100');
   }
 
   function openSearch() {
@@ -170,13 +174,22 @@ export default function Food({ state, dailyLog, onSaveFoodEntry, onDeleteFoodEnt
     setSearchClosing(false);
   }
 
-  function addSearchResult(id) {
-    const item = resultMap.get(id);
-    if (!item) return;
+  function handleResultTap(id) {
+    if (selectedId === id) {
+      setSelectedId(null);
+    } else {
+      setSelectedId(id);
+      setPortionGrams('100');
+    }
+  }
+
+  function confirmAdd(item) {
+    const grams = Math.max(1, Math.min(2000, Number(portionGrams) || 100));
+    const calories = Math.round((grams / 100) * item.caloriesPer100g);
     onSaveFoodEntry({
       name: item.name,
-      calories: item.caloriesPer100g,
-      amount: 100,
+      calories,
+      amount: grams,
       unit: 'g',
       source: 'openfoodfacts',
     });
@@ -341,15 +354,69 @@ export default function Food({ state, dailyLog, onSaveFoodEntry, onDeleteFoodEnt
             {searchStatus ? <p className="note searchStatus">{searchStatus}</p> : null}
             {results.length ? (
               <div className="foodResults modalFoodResults">
-                {results.map((item, index) => (
-                  <button className="foodResult" style={{ '--result-index': index }} key={item.id} type="button" onClick={() => addSearchResult(item.id)}>
-                    <div>
-                      <b>{item.name}</b>
-                      <span>{item.brand || 'Open Food Facts'} - 100g serving</span>
+                {results.map((item, index) => {
+                  const isSelected = selectedId === item.id;
+                  const grams = Math.max(1, Math.min(2000, Number(portionGrams) || 100));
+                  const previewKcal = isSelected ? Math.round((grams / 100) * item.caloriesPer100g) : null;
+                  return (
+                    <div key={item.id} className="foodResultGroup" style={{ '--result-index': index }}>
+                      <button
+                        className={`foodResult${isSelected ? ' selected' : ''}`}
+                        type="button"
+                        onClick={() => handleResultTap(item.id)}
+                        aria-expanded={isSelected}
+                      >
+                        <div>
+                          <b>{item.name}</b>
+                          <span>{item.brand || 'Open Food Facts'}</span>
+                        </div>
+                        <strong>{item.caloriesPer100g}<em>kcal/100g</em></strong>
+                      </button>
+                      {isSelected ? (
+                        <div className="foodPortionPicker">
+                          <div className="foodPortionQuick">
+                            {[50, 100, 150, 200].map((g) => (
+                              <button
+                                key={g}
+                                type="button"
+                                className={`portionChip${portionGrams === String(g) ? ' active' : ''}`}
+                                onClick={() => setPortionGrams(String(g))}
+                              >
+                                {g}g
+                              </button>
+                            ))}
+                          </div>
+                          <div className="foodPortionInput">
+                            <label>
+                              Amount
+                              <div className="foodPortionInputRow">
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  min="1"
+                                  max="2000"
+                                  value={portionGrams}
+                                  onChange={(e) => setPortionGrams(e.target.value)}
+                                  autoFocus
+                                />
+                                <span className="portionUnit">g</span>
+                                <span className="portionKcal">{previewKcal} kcal</span>
+                              </div>
+                            </label>
+                          </div>
+                          <button
+                            className="main"
+                            type="button"
+                            onClick={() => confirmAdd(item)}
+                            disabled={!portionGrams || Number(portionGrams) <= 0}
+                          >
+                            Add to diary
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
-                    <strong>{item.caloriesPer100g}<em>kcal</em></strong>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             ) : !searching ? (
               <div className="searchEmptyState">

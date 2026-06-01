@@ -582,7 +582,21 @@ button.main:active, .choice:active { opacity: .72; }
 .modalSearchForm { padding: 12px; border: 1px solid rgba(255,255,255,.06); border-radius: 17px; background: rgba(255,255,255,.03); }
 .searchHintRow { display: flex; justify-content: space-between; gap: 10px; margin: 12px 2px 0; color: var(--dim); font-size: 11px; font-weight: 850; text-transform: uppercase; letter-spacing: .08em; }
 .modalFoodResults { padding-bottom: 4px; }
-.modalFoodResults .foodResult { animation: searchResultIn .24s ease-out both; animation-delay: calc(var(--result-index) * 34ms); }
+.foodResultGroup { animation: searchResultIn .24s ease-out both; animation-delay: calc(var(--result-index) * 34ms); }
+.foodResult.selected { border-color: rgba(216,255,90,.42); background: rgba(216,255,90,.06); border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
+
+/* Portion picker — expands below selected result */
+.foodPortionPicker { border: 1px solid rgba(216,255,90,.3); border-top: none; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; background: rgba(216,255,90,.04); padding: 12px 12px 10px; animation: editPanelIn .26s cubic-bezier(.2,1,.25,1) both; transform-origin: top center; }
+.foodPortionQuick { display: flex; gap: 6px; margin-bottom: 10px; }
+.portionChip { flex: 1; border: 1px solid rgba(255,255,255,.1); border-radius: 9px; background: transparent; color: var(--dim); font-size: 12px; font-weight: 800; padding: 7px 4px; transition: border-color .14s, background .14s, color .14s; }
+.portionChip.active { border-color: rgba(216,255,90,.5); background: rgba(216,255,90,.1); color: var(--yes); }
+.portionChip:active { opacity: .72; }
+.foodPortionInput label { font-size: 11px; color: var(--dim); font-weight: 700; letter-spacing: .02em; }
+.foodPortionInputRow { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; margin-top: 6px; }
+.foodPortionInputRow input { margin-top: 0; font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 18px; font-weight: 700; letter-spacing: -.03em; }
+.portionUnit { color: var(--yes); font-size: 13px; font-weight: 900; white-space: nowrap; }
+.portionKcal { color: var(--text); font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; font-weight: 700; letter-spacing: -.03em; white-space: nowrap; text-align: right; min-width: 60px; }
+.foodPortionPicker .main { margin-top: 10px; }
 .searchSkeleton { display: grid; gap: 8px; margin-top: 12px; }
 .searchSkeleton i { height: 58px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(90deg, rgba(255,255,255,.035), rgba(216,255,90,.08), rgba(255,255,255,.035)); background-size: 220% 100%; animation: skeletonSweep 1s ease-in-out infinite; }
 .searchStatus { margin-left: 2px; }
