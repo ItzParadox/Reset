@@ -1,10 +1,6 @@
-import { useState } from 'react';
-import Card from '../components/Card.jsx';
-import MetricCard from '../components/MetricCard.jsx';
-import ProjectionModal from '../components/ProjectionModal.jsx';
 import { currentWeight } from '../lib/storage.js';
-import { bmiClassName, bmiVisualStyle, formatDoseMg, goalProjection, weeklyChange } from '../lib/calculations.js';
-import { formatWeight, formatWeightDelta, weightUnit } from '../lib/units.js';
+import { bmiVisualStyle, formatDoseMg, goalProjection, weeklyChange } from '../lib/calculations.js';
+import { formatWeight, formatWeightDelta } from '../lib/units.js';
 
 function greeting(name) {
   const hour = new Date().getHours();
@@ -14,194 +10,208 @@ function greeting(name) {
   return `Evening${suffix}.`;
 }
 
-function lostCopy(lost, units) {
-  if (lost <= 0) return 'Every consistent day counts.';
-  const displayLost = formatWeightDelta(-lost, units).replace('-', '');
-  if (lost < 2) return `${displayLost} down. You've started.`;
-  if (lost < 10) return `${displayLost} down. Keep going.`;
-  return `${displayLost} down. That's real.`;
-}
-
 function latestLogAgeDays(logs) {
   if (!Array.isArray(logs) || !logs.length) return null;
-  const latest = [...logs].sort((a, b) => String(b.loggedAt).localeCompare(String(a.loggedAt)) || String(b.createdAt).localeCompare(String(a.createdAt)))[0];
+  const latest = [...logs].sort((a, b) =>
+    String(b.loggedAt).localeCompare(String(a.loggedAt)) ||
+    String(b.createdAt).localeCompare(String(a.createdAt))
+  )[0];
   const logged = new Date(`${latest.loggedAt}T00:00:00`);
   if (Number.isNaN(logged.getTime())) return null;
   return Math.floor((new Date() - logged) / 86400000);
 }
 
-function guidanceItems({ state, current, target, pct, doneCount, projection, units }) {
-  const profile = state.onboardingProfile;
-  const onMedication = profile.usesWeightLossMedication && profile.medicationName !== 'none';
-  const remaining = Math.max(0, current - target);
+function smartInsight({ state, weekly, projection, units }) {
   const staleDays = latestLogAgeDays(state.weightLogs);
-  const injection = profile.injectionDay ? ` Your injection day is ${profile.injectionDay}.` : '';
-  const medName = profile.medicationOther || profile.medicationName;
-  const dose = formatDoseMg(profile.medicationDose);
+  const bmi = state.healthPlan.bmi;
+  const bmiCat = state.healthPlan.bmiCategory;
+  const profile = state.onboardingProfile;
+  const onMed = profile.usesWeightLossMedication && profile.medicationName !== 'none';
 
-  const items = [];
-  if (remaining > 0 && pct >= 80) {
-    items.push({
-      title: 'Close range',
-      body: `${formatWeight(remaining, units)} to go. Keep the plan steady and let the final stretch be boring.`,
-    });
-  } else if (pct < 12) {
-    items.push({
-      title: 'Early phase',
-      body: 'The first job is reliable data: weigh in, hit the basics, and let the trend settle before judging the plan.',
-    });
-  } else {
-    items.push({
-      title: 'Current focus',
-      body: projection
-        ? 'Your timeline will move with your logs, your calorie target, and the plan you choose.'
-        : 'Log a few more weigh-ins and Reset can turn your trend into a clearer timeline.',
-    });
+  if (staleDays !== null && staleDays >= 5) {
+    return { type: 'warn', stat: `${staleDays} days`, copy: 'since last weigh-in — log to keep your data honest.' };
   }
-
-  if (onMedication) {
-    items.push({
-      title: 'Medication-aware',
-      body: `${medName}${dose ? ` ${dose}` : ''}: smaller protein-led meals, fluids, and symptom notes are worth tracking.${injection}`,
-    });
-  } else if (doneCount < 2) {
-    items.push({
-      title: 'Minimum viable day',
-      body: 'Start with one walk, one protein anchor, and water. Then decide whether calories need tightening.',
-    });
-  } else {
-    items.push({
-      title: 'Today is moving',
-      body: `${doneCount}/4 basics are done. Finish the next easiest one instead of trying to perfect the day.`,
-    });
+  if (weekly !== null) {
+    const projStr = projection?.label ? ` — on track for ${projection.label}` : '';
+    return {
+      type: weekly < 0 ? 'good' : 'bad',
+      stat: formatWeightDelta(weekly, units),
+      copy: `per week${projStr}`,
+    };
   }
-
-  if (staleDays !== null && staleDays >= 7) {
-    items.push({
-      title: 'Fresh weigh-in',
-      body: `Last weight log was ${staleDays} days ago. A quick update will keep your projection honest.`,
-    });
-  } else {
-    items.push({
-      title: 'Trust the average',
-      body: 'One messy day does not decide the result. The weekly average is the signal.',
-    });
+  if (projection) {
+    return { type: 'neutral', stat: projection.label, copy: 'projected arrival at current pace.' };
   }
-
-  return items.slice(0, 3);
+  if (onMed) {
+    const medName = profile.medicationOther || profile.medicationName;
+    return { type: 'neutral', stat: medName, copy: 'smaller meals and fluid tracking today.' };
+  }
+  if (bmi) {
+    return { type: 'neutral', stat: `BMI ${bmi}`, copy: bmiCat || 'your current reading.' };
+  }
+  return { type: 'neutral', stat: 'Keep going', copy: 'Log your weight to unlock weekly insights.' };
 }
 
-export default function Home({ state, todayDailyLog, onChangeTab }) {
-  const [showProjection, setShowProjection] = useState(false);
-  const current = currentWeight(state);
-  const start = Number(state.onboardingProfile.startWeightKg || current);
-  const target = Number(state.onboardingProfile.goalWeightKg || state.healthPlan.targetWeightKg || 0);
-  const lost = Math.max(0, Math.round((start - current) * 10) / 10);
-  const totalToLose = Math.max(1, start - target);
-  const pct = Math.max(0, Math.min(100, (lost / totalToLose) * 100));
-  const doneCount = ['movementDone', 'calorieTargetHit', 'proteinDone', 'hydrationDone'].filter((key) => todayDailyLog[key]).length;
-  const weekly = weeklyChange(state.weightLogs);
-  const projection = goalProjection(state);
-  const name = state.profile.displayName || '';
-  const bmiClass = bmiClassName(state.healthPlan.bmiCategory);
-  const bmiStyle = bmiVisualStyle(state.healthPlan.bmi);
-  const units = state.settings.preferredUnits;
-  const remaining = Math.max(0, Math.round((current - target) * 10) / 10);
-  const guidance = guidanceItems({ state, current, target, pct, doneCount, projection, units });
-  const calorieTarget = Number(state.settings.calorieTarget || state.healthPlan.calorieTarget || 0);
-  const caloriesConsumed = (Array.isArray(todayDailyLog.foodEntries) ? todayDailyLog.foodEntries : [])
-    .reduce((total, entry) => total + (Number.parseInt(entry.calories, 10) || 0), 0);
-  const caloriePct = calorieTarget ? Math.min(100, Math.round((caloriesConsumed / calorieTarget) * 100)) : 0;
+function nextReset({ state, doneCount, projection, units, weekly }) {
+  const profile = state.onboardingProfile;
+  const staleDays = latestLogAgeDays(state.weightLogs);
+  const onMed = profile.usesWeightLossMedication && profile.medicationName !== 'none';
+  const medName = profile.medicationOther || profile.medicationName;
+  const dose = formatDoseMg(profile.medicationDose);
+  const items = [];
 
-  const todayNote = doneCount === 4 ? 'all done today' : doneCount === 0 ? 'not started yet' : 'in progress';
+  if (staleDays !== null && staleDays >= 7) {
+    items.push({ title: 'Log your weight', body: `${staleDays} days since your last entry.` });
+  } else if (weekly !== null && weekly > 0) {
+    items.push({ title: 'Trending up', body: 'Check your calorie target and log honestly this week.' });
+  } else if (projection) {
+    items.push({ title: 'On track', body: `Projected arrival: ${projection.label}.` });
+  } else {
+    items.push({ title: 'Build the data', body: 'A few more weigh-ins and your trend becomes clear.' });
+  }
+
+  if (onMed) {
+    items.push({ title: medName + (dose ? ` ${dose}` : ''), body: 'Smaller meals, fluids, and symptom notes.' });
+  } else if (doneCount < 2) {
+    items.push({ title: 'Start simple', body: 'One walk, one protein meal, hit your water goal.' });
+  } else {
+    items.push({ title: `${doneCount}/4 done`, body: 'Finish the easiest remaining one.' });
+  }
+
+  return items;
+}
+
+const BASICS = [
+  { key: 'movementDone',    label: 'Move'    },
+  { key: 'calorieTargetHit', label: 'Cals'  },
+  { key: 'proteinDone',     label: 'Protein' },
+  { key: 'hydrationDone',   label: 'Water'   },
+];
+
+export default function Home({ state, todayDailyLog, onChangeTab }) {
+  const current     = currentWeight(state);
+  const start       = Number(state.onboardingProfile.startWeightKg || current);
+  const target      = Number(state.onboardingProfile.goalWeightKg || state.healthPlan.targetWeightKg || 0);
+  const lost        = Math.max(0, Math.round((start - current) * 10) / 10);
+  const totalToLose = Math.max(1, start - target);
+  const pct         = Math.max(0, Math.min(100, (lost / totalToLose) * 100));
+  const remaining   = Math.max(0, Math.round((current - target) * 10) / 10);
+  const doneCount   = BASICS.filter(({ key }) => todayDailyLog[key]).length;
+  const weekly      = weeklyChange(state.weightLogs);
+  const projection  = goalProjection(state);
+  const name        = state.profile.displayName || '';
+  const units       = state.settings.preferredUnits;
+  const bmiStyle    = bmiVisualStyle(state.healthPlan.bmi);
+
+  const calorieTarget    = Number(state.settings.calorieTarget || state.healthPlan.calorieTarget || 0);
+  const caloriesConsumed = (Array.isArray(todayDailyLog.foodEntries) ? todayDailyLog.foodEntries : [])
+    .reduce((sum, e) => sum + (Number.parseInt(e.calories, 10) || 0), 0);
+  const caloriePct = calorieTarget ? Math.min(100, Math.round((caloriesConsumed / calorieTarget) * 100)) : 0;
+  const calorieOver = calorieTarget > 0 && caloriesConsumed > calorieTarget;
+
+  const waterMl     = Number(todayDailyLog.waterMl || 0);
+  const hydration   = Number(state.settings.hydrationTarget || 2000);
+  const waterPct    = hydration ? Math.min(100, Math.round((waterMl / hydration) * 100)) : 0;
+  const waterDone   = hydration > 0 && waterMl >= hydration;
+
+  const insight = smartInsight({ state, weekly, projection, units });
+  const resetItems = nextReset({ state, doneCount, projection, units, weekly });
 
   return (
-    <>
-    <div className="staggerStack">
-      <Card className="heroCard">
-        <div className="heroGreeting">{greeting(name)}</div>
+    <div className="homeBento">
+
+      {/* ── Hero ─────────────────────────────────────── */}
+      <div className="card heroCard homeFull">
+        <div className="homeGreeting">{greeting(name)}</div>
         <div className="big weightHeroNumber">{formatWeight(current, units, 'not set')}</div>
-        <p className="note">{lostCopy(lost, units)} Goal: {formatWeight(target, units, 'not set yet')}.</p>
-        <button className="progressOpen" type="button" onClick={() => setShowProjection(true)}>
-          <span className="progressOpenTop">
-            <span>
-              <b>{formatWeight(remaining, units, 'Set a goal')} left</b>
-              <small>Open projection graph</small>
+
+        {/* Progress bar */}
+        <div className="homeProgress">
+          <div className="homeProgressBar">
+            <span className="track homePBarTrack">
+              <span className="fill homePBarFill" style={{ width: `${pct}%` }} />
             </span>
-            <em>{Math.round(pct)}%</em>
-          </span>
-          <span className="track"><span className="fill" style={{ width: `${pct}%` }} /></span>
-        </button>
-      </Card>
-
-      <div className="grid compactMetrics">
-        <Card className="homeCalorieCard">
-          <div className="label">Calories</div>
-          <div className="homeCalorieTop">
-            <div className="mid">{caloriesConsumed}</div>
-            <span>{calorieTarget || 'not set'} target</span>
           </div>
-          <div className="track calorieTrack" aria-hidden="true"><span className="fill" style={{ width: `${caloriePct}%` }} /></div>
-          <button className="textButton" type="button" onClick={() => onChangeTab('food')}>Open Calories</button>
-        </Card>
-        <Card className="todayStatusCard">
-          <div className="label">Today</div>
-          <div className="todayStatusTop">
-            <div className="mid">{doneCount}/4</div>
-            <span>{todayNote}</span>
+          <div className="homeProgressMeta">
+            <span className="homeProgressLeft">
+              {remaining > 0 ? `${formatWeight(remaining, units)} to go` : '🎯 Goal reached'}
+            </span>
+            <span className="homeProgressPct">{Math.round(pct)}%</span>
           </div>
-          <div className="todayDots" aria-hidden="true">
-            {['movementDone', 'calorieTargetHit', 'proteinDone', 'hydrationDone'].map((key) => (
-              <i key={key} className={todayDailyLog[key] ? 'on' : ''} />
-            ))}
-          </div>
-          <button className="textButton" type="button" onClick={() => onChangeTab('today')}>Open Today</button>
-        </Card>
-      </div>
-
-      <Card className={`profileCard bmiFeature ${bmiClass}`} style={bmiStyle}>
-        <div className="bmiFeatureGrid">
-          <span className="bmiFeatureLabel">BMI</span>
-          <b className="bmiFeatureNumber">{state.healthPlan.bmi || 'pending'}</b>
-          <span className="bmiFeatureResult">{state.healthPlan.bmiCategory}</span>
         </div>
-        <p className="note">A rough signal, not a verdict. The weight trend and how you actually feel matter more.</p>
-      </Card>
 
-      <div className="grid">
-        <MetricCard
-          label="This week"
-          value={weekly === null ? 'not yet' : formatWeightDelta(weekly, units)}
-          note={weekly === null ? 'need 2 weeks of logs' : `7-day trend (${weightUnit(units)})`}
-        />
-        <MetricCard
-          label="Projected arrival"
-          value={projection?.label || 'keep logging'}
-          note={projection?.source === 'logs' ? 'from recent weigh-ins' : projection ? 'from your active plan' : 'need a few weigh-ins'}
-        />
-      </div>
-
-      <Card>
-        <div className="label">Your next reset</div>
-        <div className="list">
-          {guidance.map((item) => (
-            <div className="item" key={item.title}><b>{item.title}</b><span>{item.body}</span></div>
+        {/* Daily basics pills */}
+        <div className="homePills" role="group" aria-label="Today's basics">
+          {BASICS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              className={`homePill${todayDailyLog[key] ? ' on' : ''}`}
+              onClick={() => onChangeTab('today')}
+              aria-label={`${label}: ${todayDailyLog[key] ? 'done' : 'not done'}`}
+            >
+              {label}
+            </button>
           ))}
         </div>
-        <button className="main secondary" type="button" onClick={() => onChangeTab('today')}>Open today</button>
-      </Card>
+      </div>
+
+      {/* ── Calories ─────────────────────────────────── */}
+      <button
+        type="button"
+        className={`card homeCalCard${calorieOver ? ' calOver' : caloriePct >= 100 ? ' calDone' : ''}`}
+        onClick={() => onChangeTab('food')}
+        aria-label="Open food log"
+      >
+        <div className="label">Calories</div>
+        <div className="homeCalRing" style={{ '--cpct': `${caloriePct}%` }}>
+          <span className="homeCalNum">{caloriesConsumed}</span>
+        </div>
+        <p className="homeCalTarget note">{calorieTarget ? `${calorieTarget} target` : 'no target set'}</p>
+      </button>
+
+      {/* ── Water ────────────────────────────────────── */}
+      <button
+        type="button"
+        className={`card homeWaterCard${waterDone ? ' waterDone' : ''}`}
+        onClick={() => onChangeTab('water')}
+        aria-label="Open water tracker"
+      >
+        <div className="label">Water</div>
+        <div className="homeWaterNum mid">{waterMl}<span className="homeWaterUnit">ml</span></div>
+        <div className="homeWaterBar">
+          <div className="homeWaterBarInner" style={{ width: `${waterPct}%` }} />
+        </div>
+        <p className="note homeWaterTarget">{hydration ? `${hydration}ml target` : 'no target set'}</p>
+      </button>
+
+      {/* ── Smart insight ─────────────────────────────── */}
+      <div
+        className={`card homeInsightCard homeFull homeInsight-${insight.type}`}
+        style={insight.type === 'neutral' && state.healthPlan.bmi && !weekly && !projection ? bmiStyle : undefined}
+      >
+        <div className="homeInsightInner">
+          <span className="homeInsightStat">{insight.stat}</span>
+          <span className="homeInsightCopy">{insight.copy}</span>
+        </div>
+      </div>
+
+      {/* ── Your next reset ──────────────────────────────── */}
+      <div className="card homeResetCard homeFull">
+        <div className="homeResetHead">
+          <span className="label">Your next reset</span>
+          <button type="button" className="homeResetLink" onClick={() => onChangeTab('today')}>Open today →</button>
+        </div>
+        <div className="homeResetItems">
+          {resetItems.map((item) => (
+            <div key={item.title} className="homeResetItem">
+              <b>{item.title}</b>
+              <span>{item.body}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
-    {showProjection ? (
-      <ProjectionModal
-        state={state}
-        current={current}
-        start={start}
-        target={target}
-        projection={projection}
-        units={units}
-        onClose={() => setShowProjection(false)}
-      />
-    ) : null}
-    </>
   );
 }

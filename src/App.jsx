@@ -191,9 +191,9 @@ function AppContent() {
     resetViewportScroll();
   }
 
-  function saveWeight(weightKg) {
+  function saveWeight(weightKg, loggedAt = null) {
     if (validateWeightKg(weightKg)) return;
-    const log = createWeightLog(weightKg);
+    const log = createWeightLog(weightKg, loggedAt || undefined);
     const previousWeight = Number(state.onboardingProfile.currentWeightKg || currentWeightFromLogs(state) || 0);
     const targetWeight = Number(state.onboardingProfile.goalWeightKg || 0);
     const reachedGoal = targetWeight > 0 && previousWeight > targetWeight && log.weightKg <= targetWeight;

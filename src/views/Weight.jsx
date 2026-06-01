@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Card from '../components/Card.jsx';
-import MetricCard from '../components/MetricCard.jsx';
-import { currentWeight } from '../lib/storage.js';
+import WeightChart from '../components/WeightChart.jsx';
+import { currentWeight, localDateKey } from '../lib/storage.js';
 import { estimateTargetDate, weeklyChange } from '../lib/calculations.js';
 import TopToast from '../components/TopToast.jsx';
 import {
@@ -11,7 +11,6 @@ import {
   weightInputLimits,
   weightInputPlaceholder,
   weightInputToKg,
-  weightUnit,
 } from '../lib/units.js';
 
 function formatTime(iso) {
@@ -26,9 +25,8 @@ function changeCopy(change, units) {
   return 'Same as start';
 }
 
-// Returns the signed delta and a direction class for a log entry vs the one before it.
 function entryDelta(logs, index) {
-  const next = logs[index + 1]; // chronologically older
+  const next = logs[index + 1];
   if (!next) return null;
   const delta = Number(logs[index].weightKg) - Number(next.weightKg);
   if (Math.abs(delta) < 0.05) return { delta: 0, cls: 'deltaNeutral', arrow: '→' };
@@ -40,6 +38,11 @@ function entryDelta(logs, index) {
 export default function Weight({ state, logs, onSaveWeight, onDeleteWeight }) {
   const [weight, setWeight] = useState('');
   const [error, setError] = useState('');
+  // Duplicate day prompt state
+  const [pendingKg, setPendingKg] = useState(null);
+  const [wrongDayDate, setWrongDayDate] = useState('');
+  const [showWrongDay, setShowWrongDay] = useState(false);
+
   const units = state.settings.preferredUnits;
   const limits = weightInputLimits(units);
   const current = currentWeight(state);
@@ -50,44 +53,69 @@ export default function Weight({ state, logs, onSaveWeight, onDeleteWeight }) {
   const weekly = weeklyChange(logs);
   const projected = estimateTargetDate(logs, target);
   const toGoal = target ? Math.round((current - target) * 10) / 10 : null;
+  const todayKey = localDateKey();
 
   function submit(event) {
     event.preventDefault();
     const problem = validateWeightInput(weight, units);
-    if (problem) {
-      setError(problem);
-      return;
+    if (problem) { setError(problem); return; }
+
+    const kg = weightInputToKg(weight, units);
+    const alreadyToday = logs.some((l) => l.loggedAt === todayKey);
+
+    if (alreadyToday) {
+      // Ask if this was for a different day
+      setPendingKg(kg);
+      setWrongDayDate('');
+      setShowWrongDay(true);
+      setWeight('');
+      setError('');
+    } else {
+      onSaveWeight(kg);
+      setWeight('');
+      setError('');
     }
-    onSaveWeight(weightInputToKg(weight, units));
-    setWeight('');
-    setError('');
+  }
+
+  function confirmToday() {
+    onSaveWeight(pendingKg);
+    setPendingKg(null);
+    setShowWrongDay(false);
+  }
+
+  function confirmWrongDay() {
+    if (!wrongDayDate) return;
+    onSaveWeight(pendingKg, wrongDayDate);
+    setPendingKg(null);
+    setWrongDayDate('');
+    setShowWrongDay(false);
+  }
+
+  function dismissWrongDay() {
+    setPendingKg(null);
+    setWrongDayDate('');
+    setShowWrongDay(false);
   }
 
   return (
     <>
       <TopToast message={error} />
-      <div className="grid">
-        <MetricCard className={changeClass} label="Total so far" value={changeCopy(change, units)} note={`started at ${formatWeight(start, units, 'unknown')}`} />
-        <MetricCard
-          label="Goal"
-          value={formatWeight(target, units, 'not set')}
-          note={toGoal === null ? 'set during setup' : toGoal > 0 ? `${formatWeightDelta(toGoal, units).replace('+', '')} to go` : 'goal reached'}
-        />
-      </div>
-
-      <div className="grid">
-        <MetricCard label="Right now" value={formatWeight(current, units, 'not logged')} note="most recent log" />
-        <MetricCard
-          label="This week"
-          value={weekly === null ? 'not yet' : formatWeightDelta(weekly, units)}
-          note={weekly === null ? 'need 2 weeks of logs' : weekly < 0 ? `heading down (${weightUnit(units)})` : weekly > 0 ? `heading up (${weightUnit(units)})` : 'holding steady'}
-        />
-      </div>
+      <WeightChart state={state} units={units} />
 
       <Card>
         <div className="label">Log today's weight</div>
         <form onSubmit={submit}>
-          <input value={weight} onChange={(e) => setWeight(e.target.value)} type="number" step="0.1" min={limits.min} max={limits.max} inputMode="decimal" placeholder={weightInputPlaceholder(units)} aria-label={`Weight in ${limits.unit}`} />
+          <input
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            type="number"
+            step="0.1"
+            min={limits.min}
+            max={limits.max}
+            inputMode="decimal"
+            placeholder={weightInputPlaceholder(units)}
+            aria-label={`Weight in ${limits.unit}`}
+          />
           <button className="main" type="submit">Save</button>
         </form>
         <p className="note">
@@ -98,6 +126,41 @@ export default function Weight({ state, logs, onSaveWeight, onDeleteWeight }) {
             : 'Keep logging weekly and your goal date will show up here.'}
         </p>
       </Card>
+
+      {/* Duplicate day prompt */}
+      {showWrongDay && (
+        <Card className="wrongDayCard">
+          <div className="label">Already logged today</div>
+          <p className="note" style={{ marginTop: 0 }}>
+            You already have a reading for today. Was this entry for a different day?
+          </p>
+          <div className="wrongDayOptions">
+            <button className="main secondary" type="button" onClick={confirmToday}>
+              No, it&apos;s for today
+            </button>
+            <div className="wrongDayPicker">
+              <label>
+                Yes — set the date
+                <input
+                  type="date"
+                  value={wrongDayDate}
+                  max={todayKey}
+                  onChange={(e) => setWrongDayDate(e.target.value)}
+                />
+              </label>
+              <button
+                className="main"
+                type="button"
+                onClick={confirmWrongDay}
+                disabled={!wrongDayDate}
+              >
+                Save with this date
+              </button>
+            </div>
+          </div>
+          <button className="weightHistoryDelete wrongDayDismiss" type="button" onClick={dismissWrongDay} aria-label="Dismiss">×</button>
+        </Card>
+      )}
 
       <Card>
         <div className="label">History</div>

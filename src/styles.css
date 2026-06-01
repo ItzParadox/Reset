@@ -479,17 +479,71 @@ button.main:active, .choice:active { opacity: .72; }
 .currentWeightBlock strong, .profileWeightNumber { display: block; font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: clamp(36px, 9.4vw, 46px) !important; font-weight: 750 !important; line-height: .92; letter-spacing: -.07em; color: #fff; }
 .currentWeightBlock p { margin-top: 5px; color: var(--dim); font-size: 13px; }
 
-/* ─── Home hero ──────────────────────────────────────────────── */
-.heroGreeting { color: #fff; font-size: 15px; font-weight: 850; letter-spacing: .01em; margin-bottom: 10px; }
-.weightHeroNumber { font-size: clamp(38px, 10vw, 48px); font-weight: 650; }
-.progressOpen { width: 100%; display: block; margin-top: 14px; padding: 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(216,255,90,.22); border-radius: 16px; color: inherit; text-align: left; box-shadow: inset 0 0 0 1px rgba(255,255,255,.015); }
-.progressOpen[aria-expanded="true"] { border-color: rgba(216,255,90,.42); background: rgba(216,255,90,.075); }
-.progressOpenTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text); font-size: 13px; }
-.progressOpenTop b { display: block; font-size: 14px; font-weight: 900; }
-.progressOpenTop small { display: block; margin-top: 3px; color: var(--dim); font-size: 11px; font-weight: 850; letter-spacing: .02em; }
-.progressOpenTop em { flex: 0 0 auto; color: var(--yes); font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-style: normal; font-size: 13px; padding: 6px 8px; border: 1px solid rgba(216,255,90,.22); border-radius: 999px; background: rgba(216,255,90,.07); }
-.progressOpen .track { display: block; margin-top: 9px; }
-.progressOpen .fill { display: block; animation: progressSettle .7s cubic-bezier(.2,1,.25,1) both; }
+/* ─── Home bento layout ──────────────────────────────────────── */
+.homeBento { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.homeFull { grid-column: 1 / -1; }
+
+/* Hero */
+.heroGreeting { color: rgba(255,255,255,.5); font-size: 13px; font-weight: 700; letter-spacing: .02em; margin-bottom: 10px; }
+.weightHeroNumber { font-size: clamp(46px, 13vw, 58px); font-weight: 700; line-height: .88; color: #fff; }
+.homeProgress { margin-top: 18px; }
+.homeProgressBar { position: relative; height: 5px; background: rgba(255,255,255,.08); border-radius: 999px; overflow: hidden; }
+.homePBarFill { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, rgba(216,255,90,.6), var(--yes)); transition: width .4s cubic-bezier(.2,1,.25,1); animation: progressSettle .7s cubic-bezier(.2,1,.25,1) both; }
+.homeProgressMeta { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+.homeProgressLeft { font-size: 12px; color: var(--dim); font-weight: 700; }
+.homeProgressPct { font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; font-weight: 800; color: var(--yes); }
+
+/* Basics pills */
+.homePills { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 16px; }
+.homePill { border: 1px solid rgba(255,255,255,.1); border-radius: 9px; background: transparent; color: var(--dim); font-size: 11px; font-weight: 800; padding: 7px 4px; text-align: center; cursor: pointer; transition: border-color .14s ease, background-color .14s ease, color .14s ease; touch-action: manipulation; }
+.homePill:active { opacity: .72; transform: scale(.97); }
+.homePill.on { border-color: rgba(216,255,90,.5); background: rgba(216,255,90,.1); color: var(--yes); }
+
+/* Compact "Your next reset" */
+.homeResetCard { margin-bottom: 0; padding: 14px 16px; }
+.homeResetHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.homeResetHead .label { margin-bottom: 0; }
+.homeResetLink { background: none; border: none; color: var(--yes); font-size: 11px; font-weight: 900; cursor: pointer; letter-spacing: .01em; padding: 0; }
+.homeResetItems { display: flex; flex-direction: column; gap: 1px; }
+.homeResetItem { display: flex; align-items: baseline; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.homeResetItem:last-child { border-bottom: none; padding-bottom: 0; }
+.homeResetItem b { font-size: 13px; font-weight: 800; color: var(--text); white-space: nowrap; flex: 0 0 auto; }
+.homeResetItem span { font-size: 12px; color: var(--dim); line-height: 1.3; }
+
+/* Calories card */
+.homeCalCard { cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 18px 12px; margin-bottom: 0; justify-content: space-between; transition: border-color .18s ease, background-color .18s ease, transform .14s ease; }
+.homeCalCard:active { transform: scale(.982); }
+.homeCalCard .label { margin-bottom: 12px; width: 100%; text-align: left; }
+.homeCalRing { width: 80px; height: 80px; border-radius: 50%; background: conic-gradient(var(--yes) var(--cpct, 0%), rgba(255,255,255,.07) 0%); display: grid; place-items: center; position: relative; flex: 0 0 auto; }
+.homeCalRing::after { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: var(--s1); border: 1px solid rgba(255,255,255,.04); }
+.homeCalNum { position: relative; z-index: 1; font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; font-weight: 800; color: var(--text); letter-spacing: -.04em; }
+.homeCalTarget { margin-top: 10px; font-size: 11px; margin-bottom: 0; }
+.homeCalCard.calOver .homeCalRing { background: conic-gradient(var(--bad) var(--cpct, 0%), rgba(255,255,255,.07) 0%); }
+.homeCalCard.calOver .homeCalNum { color: var(--bad); }
+.homeCalCard.calDone .homeCalNum { color: var(--yes); }
+
+/* Water card */
+.homeWaterCard { cursor: pointer; display: flex; flex-direction: column; padding: 18px 14px; margin-bottom: 0; justify-content: space-between; transition: border-color .18s ease, background-color .18s ease, transform .14s ease; }
+.homeWaterCard:active { transform: scale(.982); }
+.homeWaterCard .label { margin-bottom: 0; }
+.homeWaterNum { font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: clamp(26px, 7vw, 32px); font-weight: 700; letter-spacing: -.05em; line-height: 1; margin-top: 8px; color: #fff; }
+.homeWaterUnit { font-size: 12px; font-weight: 700; color: var(--dim); margin-left: 2px; font-family: inherit; letter-spacing: 0; }
+.homeWaterBar { height: 4px; background: rgba(255,255,255,.07); border-radius: 999px; overflow: hidden; margin-top: auto; padding-top: 12px; }
+.homeWaterBarInner { height: 4px; border-radius: 999px; background: linear-gradient(90deg, rgba(126,188,255,.6), #7ebcff); transition: width .4s cubic-bezier(.2,1,.25,1); }
+.homeWaterTarget { font-size: 11px; margin-top: 8px; margin-bottom: 0; }
+.homeWaterCard.waterDone .homeWaterNum { color: #7ebcff; }
+.homeWaterCard.waterDone { border-color: rgba(126,188,255,.28); background: rgba(126,188,255,.04); }
+
+/* Insight card */
+.homeInsightCard { margin-bottom: 0; padding: 16px 18px; display: flex; align-items: center; min-height: 72px; }
+.homeInsightInner { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; width: 100%; }
+.homeInsightStat { font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: clamp(20px, 5.5vw, 24px); font-weight: 800; letter-spacing: -.045em; line-height: 1; white-space: nowrap; }
+.homeInsightCopy { font-size: 13px; color: var(--dim); line-height: 1.4; }
+.homeInsight-good .homeInsightStat { color: #63ff95; }
+.homeInsight-bad .homeInsightStat { color: var(--bad); }
+.homeInsight-warn .homeInsightStat { color: #e8c36e; }
+.homeInsight-warn { border-color: rgba(232,195,110,.22); background: rgba(232,195,110,.04); }
+.homeInsight-neutral .homeInsightStat { color: #fff; }
 .projectionBackdrop { align-items: flex-start; padding: calc(env(safe-area-inset-top) + 18px) 14px calc(env(safe-area-inset-bottom) + 96px); overflow: auto; z-index: 120; }
 .projectionBackdrop.closing { animation: projectionBackdropOut .24s ease-in both; }
 .projectionModal { position: relative; width: min(420px, 100%); max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 114px); margin: 0; padding: 18px 16px 16px; overflow: auto; background: #080808; border-color: rgba(216,255,90,.22); box-shadow: 0 28px 90px rgba(0,0,0,.58), 0 0 0 1px rgba(216,255,90,.06) inset; animation: modalIn .32s cubic-bezier(.2,1.08,.2,1) both; }
@@ -534,8 +588,8 @@ button.main:active, .choice:active { opacity: .72; }
 .pg-chart { border-radius: 18px; background: radial-gradient(circle at 78% 18%, rgba(216,255,90,.055), transparent 38%), linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.016)); border: 1px solid rgba(255,255,255,.07); overflow: hidden; }
 .pg-svg { display: block; width: 100%; height: auto; }
 .pg-grid { stroke: rgba(255,255,255,.07); stroke-width: .5; }
-.pg-axis-label { fill: rgba(255,255,255,.32); font-size: 7.5px; font-weight: 700; text-anchor: end; font-family: 'DM Mono', ui-monospace, monospace; }
-.pg-date-label { fill: rgba(255,255,255,.28); font-size: 7.5px; font-weight: 700; text-anchor: start; font-family: 'DM Mono', ui-monospace, monospace; }
+.pg-axis-label { fill: rgba(255,255,255,.55); font-size: 7.5px; font-weight: 700; text-anchor: end; font-family: 'DM Mono', ui-monospace, monospace; }
+.pg-date-label { fill: rgba(255,255,255,.5); font-size: 7.5px; font-weight: 700; text-anchor: start; font-family: 'DM Mono', ui-monospace, monospace; }
 .pg-date-end { text-anchor: end; }
 .pg-actual-line { fill: none; stroke: rgba(255,255,255,.88); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; animation: pgLineDraw .7s cubic-bezier(.2,1,.25,1) both; }
 .pg-projection-line { fill: none; stroke-width: 2.2; stroke-dasharray: 6 4; stroke-linecap: round; animation: pgLineDraw .85s cubic-bezier(.2,1,.25,1) .1s both; }
@@ -559,6 +613,37 @@ button.main:active, .choice:active { opacity: .72; }
 .todayDots i { height: 5px; border-radius: 999px; background: var(--off); }
 .todayDots i.on { background: var(--yes); box-shadow: 0 0 0 3px rgba(216,255,90,.08); }
 .textButton { margin-top: 12px; border: 0; background: transparent; color: var(--yes); font-size: 12px; font-weight: 900; letter-spacing: .01em; }
+
+/* ─── Wrong day prompt ───────────────────────────────────────── */
+.wrongDayCard { position: relative; border-color: rgba(216,255,90,.28); background: rgba(216,255,90,.04); animation: itemInCalm .22s ease-out both; }
+.wrongDayOptions { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.wrongDayPicker { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--s2); }
+.wrongDayPicker .main { margin-top: 0; }
+.wrongDayDismiss { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; margin-top: 0; }
+
+/* ─── Weight chart dashboard ─────────────────────────────────── */
+.wcWrap { margin-bottom: 10px; }
+.wcStats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.wcStatCard { margin-bottom: 0; display: flex; flex-direction: column; gap: 4px; min-height: 96px; }
+.wcStatVal { font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: clamp(20px, 5.5vw, 26px); font-weight: 700; letter-spacing: -.045em; line-height: 1; color: var(--text); margin-top: 2px; }
+.wcStatAccent { color: #fff; }
+.wcDelta { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 800; margin-top: 2px; }
+.wcDeltaDown { color: #63ff95; }
+.wcDeltaUp { color: var(--bad); }
+.wcDeltaFlat { color: var(--off); }
+.wcDeltaHint { color: var(--dim); font-weight: 700; }
+.wcChartCard { margin-bottom: 0; padding: 16px 14px 0; overflow: visible; }
+.wcChartHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.wcChartHead .pg-ranges { flex-wrap: wrap; justify-content: flex-end; margin-bottom: 0; }
+.wcSvg { display: block; width: 100%; height: auto; }
+.wcEmpty { display: flex; align-items: center; justify-content: center; height: 100px; border: 1px dashed var(--off); border-radius: 14px; margin-bottom: 14px; }
+.wcChartArea { margin: 0 -8px; }
+.wcChartFooter { display: flex; align-items: center; justify-content: space-between; padding: 10px 2px 14px; border-top: 1px solid var(--line); margin-top: 4px; }
+.wcFooterDelta { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; }
+.wcFooterHint { color: var(--dim); font-weight: 700; }
+.wcTooltip { background: #111; border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; display: flex; flex-direction: column; gap: 3px; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.wcTooltipDate { font-size: 11px; color: var(--dim); font-weight: 700; }
+.wcTooltipVal { font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 17px; font-weight: 700; color: var(--yes); letter-spacing: -.035em; }
 
 /* ─── Progress states ────────────────────────────────────────── */
 .progressGood { border-color: rgba(77, 255, 139, .34); background: rgba(77,255,139,.055); }
