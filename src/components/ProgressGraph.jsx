@@ -1,5 +1,5 @@
 import { useId, useMemo, useState } from 'react';
-import { formatWeight, formatWeightDelta } from '../lib/units.js';
+import { formatWeight } from '../lib/units.js';
 import {
   buildProgressGraphData,
   progressDaysBetween,
@@ -8,7 +8,7 @@ import {
 } from '../lib/progressGraph.js';
 
 const VIEWBOX_WIDTH = 340;
-const VIEWBOX_HEIGHT = 170;
+const VIEWBOX_HEIGHT = 185;
 const PAD = { top: 14, right: 14, bottom: 30, left: 46 };
 const PLOT_WIDTH = VIEWBOX_WIDTH - PAD.left - PAD.right;
 const PLOT_HEIGHT = VIEWBOX_HEIGHT - PAD.top - PAD.bottom;
@@ -77,11 +77,9 @@ export default function ProgressGraph({ state, current, start, target, projectio
   const ticks = gridTicks(yMin, yMax);
   const actualFillId = `pg-actual-fill-${graphId}`;
   const projectionFillId = `pg-projection-fill-${graphId}`;
+  const projLineGradId = `pg-proj-line-${graphId}`;
   const currentGlowId = `pg-current-glow-${graphId}`;
   const goalGlowId = `pg-goal-glow-${graphId}`;
-  const weeklyCopy = Number.isFinite(Number(projection?.weeklyLossKg))
-    ? formatWeightDelta(-Math.abs(Number(projection.weeklyLossKg)), units).replace('-', '')
-    : 'calculating';
   const summary = hasProjection
     ? `Weight progress from ${formatWeight(start, units, 'unknown')} to ${formatWeight(current, units, 'unknown')}. Goal is ${formatWeight(target, units, 'unknown')}, estimated around ${projection?.label || 'unknown'}.`
     : `Weight progress from ${formatWeight(start, units, 'unknown')} to ${formatWeight(current, units, 'unknown')}.`;
@@ -115,9 +113,20 @@ export default function ProgressGraph({ state, current, start, target, projectio
               <stop offset="100%" stopColor="rgba(255,255,255,0)" />
             </linearGradient>
             <linearGradient id={projectionFillId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(216,255,90,0.09)" />
+              <stop offset="0%" stopColor="rgba(216,255,90,0.13)" />
               <stop offset="100%" stopColor="rgba(216,255,90,0)" />
             </linearGradient>
+            {lastPoint && futureSvgPoint ? (
+              <linearGradient
+                id={projLineGradId}
+                gradientUnits="userSpaceOnUse"
+                x1={lastPoint.x.toFixed(2)} y1={lastPoint.y.toFixed(2)}
+                x2={futureSvgPoint.x.toFixed(2)} y2={futureSvgPoint.y.toFixed(2)}
+              >
+                <stop offset="0%" stopColor="rgba(255,255,255,0.72)" />
+                <stop offset="100%" stopColor="rgba(216,255,90,0.95)" />
+              </linearGradient>
+            ) : null}
             <filter id={currentGlowId}>
               <feGaussianBlur stdDeviation="3" result="blur" />
               <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
@@ -138,7 +147,17 @@ export default function ProgressGraph({ state, current, start, target, projectio
           ))}
 
           {projectionAreaPath ? <path d={projectionAreaPath} fill={`url(#${projectionFillId})`} /> : null}
-          {projectionPath ? <path d={projectionPath} className="pg-projection-line" /> : null}
+          {projectionPath ? (
+            <path
+              d={projectionPath}
+              fill="none"
+              stroke={lastPoint && futureSvgPoint ? `url(#${projLineGradId})` : 'rgba(216,255,90,0.85)'}
+              strokeWidth="2.2"
+              strokeDasharray="6 4"
+              strokeLinecap="round"
+              className="pg-projection-line"
+            />
+          ) : null}
           {areaPath ? <path d={areaPath} fill={`url(#${actualFillId})`} /> : null}
           {actualPath ? <path d={actualPath} className="pg-actual-line" /> : null}
 
@@ -162,9 +181,12 @@ export default function ProgressGraph({ state, current, start, target, projectio
       </div>
 
       {chart.projectionHiddenByRange ? (
-        <p className="note pg-range-note">Projection is outside this range. Switch to All to see the full goal path.</p>
-      ) : hasProjection ? (
-        <p className="note pg-range-note">Estimated pace: about {weeklyCopy} per week if the current plan holds.</p>
+        <p className="note pg-range-note">
+          Projection is outside this window.{' '}
+          <button type="button" className="pg-range-link" onClick={() => setRange('all')}>
+            Switch to All
+          </button>
+        </p>
       ) : null}
     </div>
   );
