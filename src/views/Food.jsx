@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Card from '../components/Card.jsx';
+import useScrollLock from '../lib/useScrollLock.js';
 
 const SEARCH_LIMIT = 8;
 
@@ -93,41 +94,15 @@ export default function Food({ state, dailyLog, onSaveFoodEntry, onDeleteFoodEnt
     window.clearTimeout(toastTimerRef.current);
   }, []);
 
+  useScrollLock(searchOpen);
+
   useEffect(() => {
     if (!searchOpen) return undefined;
-    const scrollY = window.scrollY;
-    const body = document.body;
-    const previous = {
-      overflow: body.style.overflow,
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      right: body.style.right,
-      width: body.style.width,
-    };
-
-    body.style.overflow = 'hidden';
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.left = '0';
-    body.style.right = '0';
-    body.style.width = '100%';
-
     const onKeyDown = (event) => {
       if (event.key === 'Escape') requestCloseSearch();
     };
     window.addEventListener('keydown', onKeyDown);
-
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      body.style.overflow = previous.overflow;
-      body.style.position = previous.position;
-      body.style.top = previous.top;
-      body.style.left = previous.left;
-      body.style.right = previous.right;
-      body.style.width = previous.width;
-      window.scrollTo(0, scrollY);
-    };
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [searchOpen]);
 
   async function handleSearch(event) {

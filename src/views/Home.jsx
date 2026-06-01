@@ -6,6 +6,7 @@ import ProgressGraph from '../components/ProgressGraph.jsx';
 import { currentWeight } from '../lib/storage.js';
 import { bmiClassName, bmiVisualStyle, formatDoseMg, goalProjection, weeklyChange } from '../lib/calculations.js';
 import { formatWeight, formatWeightDelta, weightUnit } from '../lib/units.js';
+import useScrollLock from '../lib/useScrollLock.js';
 
 function greeting(name) {
   const hour = new Date().getHours();
@@ -106,39 +107,10 @@ function ProjectionModal({ state, current, start, target, projection, units, onC
     closeTimer.current = window.setTimeout(onClose, 240);
   }
 
+  useScrollLock(true);
+
   useEffect(() => {
-    const scrollY = window.scrollY;
-    const body = document.body;
-    const html = document.documentElement;
-    const previousBody = {
-      overflow: body.style.overflow,
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      right: body.style.right,
-      width: body.style.width,
-    };
-    const previousHtmlOverflow = html.style.overflow;
-
-    body.style.overflow = 'hidden';
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.left = '0';
-    body.style.right = '0';
-    body.style.width = '100%';
-    html.style.overflow = 'hidden';
-
-    return () => {
-      window.clearTimeout(closeTimer.current);
-      body.style.overflow = previousBody.overflow;
-      body.style.position = previousBody.position;
-      body.style.top = previousBody.top;
-      body.style.left = previousBody.left;
-      body.style.right = previousBody.right;
-      body.style.width = previousBody.width;
-      html.style.overflow = previousHtmlOverflow;
-      window.scrollTo(0, scrollY);
-    };
+    return () => window.clearTimeout(closeTimer.current);
   }, []);
 
   useEffect(() => {
