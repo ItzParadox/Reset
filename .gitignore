@@ -35,3 +35,6 @@ coverage/
 
 # Netlify local state
 .netlify/
+
+# Claude tooling
+.claude/
