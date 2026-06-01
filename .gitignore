@@ -41,4 +41,3 @@ coverage/
 
 # Local-only files (saved on PC, not committed)
 HANDOFF.md
-src/components/WeightChart.jsx
